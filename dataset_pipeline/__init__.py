@@ -11,6 +11,8 @@ from .phase1_discover import StructureDiscoveryPhase
 from .phase1_sample import StratifiedSamplingPhase
 from .phase1_download import ParallelDownloadPhase
 from .phase2_yolo import YOLOAnalysisPhase
+from .phase3_balance import BalancedSelectionPhase
+from .phase4_roi_tool import ROIDefinitionTool
 
 # Import verification tools
 from .verify_yolo import YOLOVerification
@@ -20,5 +22,7 @@ __all__ = [
     "StratifiedSamplingPhase",
     "ParallelDownloadPhase",
     "YOLOAnalysisPhase",
+    "BalancedSelectionPhase",
+    "ROIDefinitionTool",
     "YOLOVerification",
 ]

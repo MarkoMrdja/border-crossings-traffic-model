@@ -44,7 +44,9 @@ Train a CNN to classify traffic density with >85% accuracy on held-out validatio
 │   ├── phase1_discover.py        # Phase 1a: Structure Discovery
 │   ├── phase1_sample.py          # Phase 1b: Stratified Sampling
 │   ├── phase1_download.py        # Phase 1c: Parallel Download
-│   └── phase2_yolo.py            # Phase 2: YOLO Analysis
+│   ├── phase2_yolo.py            # Phase 2: YOLO Analysis
+│   ├── phase3_balance.py         # Phase 3: Traffic-Balanced Selection
+│   └── phase4_roi_tool.py        # Phase 4: ROI Definition Tool
 │
 ├── traffic_dataset/              # Working directory for all data
 │   ├── inventory.json            # Container structure (Phase 1a output)
@@ -195,19 +197,65 @@ python -m dataset_pipeline.verify_yolo --output-dir ./my_verification
 - ⚠️ Warns about cameras with imbalanced distributions
 - 🔴 Flags critical issues that may prevent Phase 3 from succeeding
 
-### ❌ **Phase 3: Traffic-Balanced Selection**
-**Status**: Not implemented
+### ✅ **Phase 3: Traffic-Balanced Selection** (`phase3_balance.py`)
+**Status**: Implemented
 **Purpose**: Select 500 final images per camera, balanced across 4 traffic levels (125 per level)
 **Time**: <1 minute
 
-Will select from the 700 samples to ensure balanced representation across traffic density classes.
+Selects from the YOLO-analyzed samples to ensure balanced representation across traffic density classes:
+- **Target**: 125 images per traffic level (empty, light, moderate, heavy) per camera
+- **Total**: 500 images per camera × 32 cameras = 16,000 images
+- **Strategy**: Priority-based selection (heavy → moderate → light → empty)
+- **ROI References**: Identifies highest-traffic image per camera for ROI definition
 
-### ❌ **Phase 4: ROI Definition (Interactive Tool)**
-**Status**: Not implemented
+```bash
+# Run balanced selection
+python -m dataset_pipeline.phase3_balance
+
+# Resume from existing selection
+python -m dataset_pipeline.phase3_balance --resume
+
+# Validate only
+python -m dataset_pipeline.phase3_balance --validate-only
+```
+
+**Outputs**:
+- `traffic_dataset/balanced_selection.json` - Selected samples with statistics
+- `traffic_dataset/roi_references.json` - Reference images for ROI definition (Phase 4)
+
+### ✅ **Phase 4: ROI Definition Tool** (`phase4_roi_tool.py`)
+**Status**: Implemented
 **Purpose**: Define polygon regions where YOLO misses vehicles
 **Time**: ~2.5 hours (human-in-the-loop)
 
-Interactive OpenCV tool to draw ROI polygons on sample images from each camera.
+Interactive OpenCV-based GUI for defining polygon ROIs on each camera. Shows reference images (highest traffic) with YOLO bounding boxes overlaid, allowing users to draw polygons around regions where YOLO misses distant vehicles.
+
+**Controls**:
+- **Left-click**: Add polygon vertex
+- **Right-click**: Remove last vertex
+- **N**: Save polygon and move to next camera
+- **R**: Reset current polygon
+- **S**: Skip camera (no ROI defined)
+- **Q**: Save progress and quit
+
+```bash
+# Run ROI definition tool (interactive)
+python -m dataset_pipeline.phase4_roi_tool
+
+# Resume (skip cameras with existing ROIs)
+python -m dataset_pipeline.phase4_roi_tool --resume
+
+# Validate only
+python -m dataset_pipeline.phase4_roi_tool --validate-only
+```
+
+**Output**: `traffic_dataset/roi_config.json` with polygon definitions per camera
+
+**Features**:
+- Visual feedback with YOLO boxes in green, polygon in yellow
+- Live vertex count and camera progress
+- Resume capability - can quit and continue later
+- Per-camera ROI polygons saved with timestamps
 
 ### ❌ **Phase 5: Batch Crop**
 **Status**: Not implemented
@@ -280,7 +328,10 @@ python -m dataset_pipeline.phase2_yolo
 # Verify YOLO results (~2-5 min)
 python -m dataset_pipeline.verify_yolo
 
-# ... Phases 3-7 to be implemented
+# Phase 3: Balanced selection (<1 min)
+python -m dataset_pipeline.phase3_balance
+
+# ... Phases 4-7 to be implemented
 ```
 
 ### Resume Capability
@@ -580,4 +631,4 @@ For questions or issues, please open an issue in the GitHub repository.
 ---
 
 **Last Updated**: January 2, 2026
-**Project Status**: Phases 1-2 implemented (4/7 phases complete)
+**Project Status**: Phases 1-3 implemented (5/7 phases complete)
