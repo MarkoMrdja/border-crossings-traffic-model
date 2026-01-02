@@ -1,0 +1,253 @@
+"""
+Configuration for Border Crossings Traffic Dataset Pipeline
+
+This module contains all configuration settings for the dataset pipeline,
+including Azure authentication, pipeline parameters, and constants.
+"""
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Tuple, Dict, List
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+
+@dataclass
+class AzureConfig:
+    """Azure Blob Storage authentication and connection configuration."""
+
+    client_id: str
+    tenant_id: str
+    client_secret: str
+    storage_url: str
+    container_name: str = "not-processed-imgs"
+
+    @classmethod
+    def from_env(cls) -> "AzureConfig":
+        """Create AzureConfig from environment variables."""
+        client_id = os.getenv("AZURE_CLIENT_ID")
+        tenant_id = os.getenv("AZURE_TENANT_ID")
+        client_secret = os.getenv("AZURE_CLIENT_SECRET")
+        storage_url = os.getenv("AZURE_STORAGE_URL")
+
+        if not all([client_id, tenant_id, client_secret, storage_url]):
+            raise ValueError(
+                "Missing required Azure environment variables. "
+                "Please ensure AZURE_CLIENT_ID, AZURE_TENANT_ID, "
+                "AZURE_CLIENT_SECRET, and AZURE_STORAGE_URL are set."
+            )
+
+        return cls(
+            client_id=client_id,
+            tenant_id=tenant_id,
+            client_secret=client_secret,
+            storage_url=storage_url
+        )
+
+
+@dataclass
+class PipelineConfig:
+    """Pipeline execution configuration and parameters."""
+
+    # Base directory for all dataset files
+    base_dir: Path = Path("./traffic_dataset")
+
+    # Sampling parameters
+    initial_samples_per_camera: int = 700
+    final_samples_per_camera: int = 500
+    target_per_traffic_level: int = 125  # 500 / 4 levels
+    samples_per_time_bucket: int = 140
+    samples_per_season: int = 35
+
+    # Cropping parameters
+    crop_size: int = 64
+
+    # Train/validation split
+    train_ratio: float = 0.8
+
+    # Directory paths (relative to base_dir)
+    inventory_file: str = "inventory.json"
+    sample_manifest_file: str = "sample_manifest.json"
+    download_progress_file: str = "download_progress.json"
+    yolo_results_file: str = "yolo_results.json"
+    roi_config_file: str = "roi_config.json"
+    labeling_progress_file: str = "labeling_progress.json"
+
+    raw_dir: str = "raw"
+    crops_dir: str = "crops"
+    labeled_dir: str = "labeled"
+    final_dir: str = "final"
+
+    def __post_init__(self):
+        """Convert string paths to Path objects and ensure base_dir is absolute."""
+        self.base_dir = Path(self.base_dir).resolve()
+
+    def get_path(self, relative_path: str) -> Path:
+        """Get absolute path for a relative path within base_dir."""
+        return self.base_dir / relative_path
+
+    def ensure_directories(self):
+        """Create all required directories if they don't exist."""
+        # Create base directory
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create subdirectories
+        (self.base_dir / self.raw_dir).mkdir(exist_ok=True)
+
+        # Crops directories (by predicted traffic level)
+        for level in TRAFFIC_LEVELS:
+            (self.base_dir / self.crops_dir / f"likely_{level}").mkdir(parents=True, exist_ok=True)
+
+        # Labeled directories (by verified traffic level)
+        for level in TRAFFIC_LEVELS:
+            (self.base_dir / self.labeled_dir / level).mkdir(parents=True, exist_ok=True)
+
+        # Final directories (train/val split)
+        for split in ["train", "val"]:
+            for level in TRAFFIC_LEVELS:
+                (self.base_dir / self.final_dir / split / level).mkdir(parents=True, exist_ok=True)
+
+
+# ============================================================================
+# CONSTANTS
+# ============================================================================
+
+# YOLO Configuration
+YOLO_CONFIG = {
+    "model": "yolo11n",
+    "confidence_threshold": 0.25,
+    "device": "mps",  # Apple Silicon GPU, fallback to 'cpu'
+    "classes": [2, 3, 5, 7],  # car, motorcycle, bus, truck in COCO dataset
+}
+
+# Traffic Level Thresholds (vehicle counts)
+TRAFFIC_THRESHOLDS = {
+    "empty": (0, 2),           # 0-2 detections
+    "light": (3, 6),           # 3-6 detections
+    "moderate": (7, 15),       # 7-15 detections
+    "heavy": (16, float("inf"))  # 16+ detections
+}
+
+# Traffic levels (ordered for processing)
+TRAFFIC_LEVELS = ["empty", "light", "moderate", "heavy"]
+
+# Time Buckets (hour ranges and target samples per camera)
+TIME_BUCKETS = {
+    "night": {
+        "hours": (22, 6),      # 22:00 - 05:59
+        "samples": 140
+    },
+    "morning": {
+        "hours": (6, 10),      # 06:00 - 09:59
+        "samples": 140
+    },
+    "midday": {
+        "hours": (10, 14),     # 10:00 - 13:59
+        "samples": 140
+    },
+    "afternoon": {
+        "hours": (14, 18),     # 14:00 - 17:59
+        "samples": 140
+    },
+    "evening": {
+        "hours": (18, 22),     # 18:00 - 21:59
+        "samples": 140
+    }
+}
+
+# Season Buckets (months and target samples per time bucket)
+SEASON_BUCKETS = {
+    "winter": {
+        "months": ["12", "01", "02"],
+        "samples": 35
+    },
+    "spring": {
+        "months": ["03", "04", "05"],
+        "samples": 35
+    },
+    "summer": {
+        "months": ["06", "07", "08"],
+        "samples": 35
+    },
+    "autumn": {
+        "months": ["09", "10", "11"],
+        "samples": 35
+    }
+}
+
+# COCO Class Names (for reference)
+COCO_VEHICLE_CLASSES = {
+    2: "car",
+    3: "motorcycle",
+    5: "bus",
+    7: "truck"
+}
+
+
+def categorize_traffic(vehicle_count: int) -> str:
+    """
+    Categorize traffic level based on vehicle count.
+
+    Args:
+        vehicle_count: Number of vehicles detected by YOLO
+
+    Returns:
+        Traffic level category with 'likely_' prefix for auto-labeling
+    """
+    if vehicle_count <= 2:
+        return "likely_empty"
+    elif vehicle_count <= 6:
+        return "likely_light"
+    elif vehicle_count <= 15:
+        return "likely_moderate"
+    else:
+        return "likely_heavy"
+
+
+def get_time_bucket(hour: int) -> str:
+    """
+    Determine time bucket for a given hour.
+
+    Args:
+        hour: Hour of day (0-23)
+
+    Returns:
+        Time bucket name
+    """
+    for bucket_name, bucket_info in TIME_BUCKETS.items():
+        start_hour, end_hour = bucket_info["hours"]
+
+        # Handle wrap-around for night bucket (22:00 - 05:59)
+        if start_hour > end_hour:
+            if hour >= start_hour or hour < end_hour:
+                return bucket_name
+        else:
+            if start_hour <= hour < end_hour:
+                return bucket_name
+
+    # Default fallback
+    return "unknown"
+
+
+def get_season(month: str) -> str:
+    """
+    Determine season for a given month.
+
+    Args:
+        month: Month as string (padded or non-padded, e.g., "07" or "7")
+
+    Returns:
+        Season name
+    """
+    # Normalize month to padded format
+    month_padded = month.zfill(2)
+
+    for season_name, season_info in SEASON_BUCKETS.items():
+        if month_padded in season_info["months"]:
+            return season_name
+
+    # Default fallback
+    return "unknown"

@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+
+# Dataset files
+traffic_dataset/raw/
+traffic_dataset/crops/
+traffic_dataset/labeled/
+traffic_dataset/final/
+
+# Keep structure but ignore images
+*.jpg
+*.jpeg
+*.png
+
+# Pipeline state files (JSON)
+traffic_dataset/*.json
+
+# Logs
+*.log
+traffic_dataset/pipeline.log
+
+# YOLO model weights (will be downloaded)
+*.pt
+yolov*.pt
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
