@@ -12,9 +12,13 @@ from .phase1_sample import StratifiedSamplingPhase
 from .phase1_download import ParallelDownloadPhase
 from .phase2_yolo import YOLOAnalysisPhase
 
+# Import verification tools
+from .verify_yolo import YOLOVerification
+
 __all__ = [
     "StructureDiscoveryPhase",
     "StratifiedSamplingPhase",
     "ParallelDownloadPhase",
     "YOLOAnalysisPhase",
+    "YOLOVerification",
 ]
