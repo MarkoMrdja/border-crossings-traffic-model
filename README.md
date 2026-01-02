@@ -46,7 +46,8 @@ Train a CNN to classify traffic density with >85% accuracy on held-out validatio
 │   ├── phase1_download.py        # Phase 1c: Parallel Download
 │   ├── phase2_yolo.py            # Phase 2: YOLO Analysis
 │   ├── phase3_balance.py         # Phase 3: Traffic-Balanced Selection
-│   └── phase4_roi_tool.py        # Phase 4: ROI Definition Tool
+│   ├── phase4_roi_tool.py        # Phase 4: ROI Definition Tool
+│   └── phase5_crop.py            # Phase 5: Batch Cropping
 │
 ├── traffic_dataset/              # Working directory for all data
 │   ├── inventory.json            # Container structure (Phase 1a output)
@@ -257,12 +258,25 @@ python -m dataset_pipeline.phase4_roi_tool --validate-only
 - Resume capability - can quit and continue later
 - Per-camera ROI polygons saved with timestamps
 
-### ❌ **Phase 5: Batch Crop**
-**Status**: Not implemented
+### ✅ **Phase 5: Batch Crop** (`phase5_crop.py`)
+**Status**: Implemented
 **Purpose**: Crop ROI regions and resize to 64×64
 **Time**: 5-10 minutes
 
 Crops defined ROI regions from selected images and organizes by predicted traffic level.
+
+```bash
+# Run batch cropping
+python -m dataset_pipeline.phase5_crop
+
+# Resume from existing progress
+python -m dataset_pipeline.phase5_crop --resume
+
+# Validate only
+python -m dataset_pipeline.phase5_crop --validate-only
+```
+
+**Output**: 16,000 cropped 64×64 images in `crops/likely_{level}/` folders
 
 ### ❌ **Phase 6: Labeling & Verification (Interactive Tool)**
 **Status**: Not implemented
@@ -331,7 +345,13 @@ python -m dataset_pipeline.verify_yolo
 # Phase 3: Balanced selection (<1 min)
 python -m dataset_pipeline.phase3_balance
 
-# ... Phases 4-7 to be implemented
+# Phase 4: ROI definition (~2.5 hours, interactive)
+python -m dataset_pipeline.phase4_roi_tool
+
+# Phase 5: Batch cropping (5-10 min)
+python -m dataset_pipeline.phase5_crop
+
+# ... Phases 6-7 to be implemented
 ```
 
 ### Resume Capability
@@ -631,4 +651,4 @@ For questions or issues, please open an issue in the GitHub repository.
 ---
 
 **Last Updated**: January 2, 2026
-**Project Status**: Phases 1-3 implemented (5/7 phases complete)
+**Project Status**: Phases 1-5 implemented (6/7 phases complete)

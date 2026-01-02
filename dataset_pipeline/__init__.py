@@ -13,6 +13,7 @@ from .phase1_download import ParallelDownloadPhase
 from .phase2_yolo import YOLOAnalysisPhase
 from .phase3_balance import BalancedSelectionPhase
 from .phase4_roi_tool import ROIDefinitionTool
+from .phase5_crop import CropPhase
 
 # Import verification tools
 from .verify_yolo import YOLOVerification
@@ -24,5 +25,6 @@ __all__ = [
     "YOLOAnalysisPhase",
     "BalancedSelectionPhase",
     "ROIDefinitionTool",
+    "CropPhase",
     "YOLOVerification",
 ]
