@@ -47,7 +47,9 @@ Train a CNN to classify traffic density with >85% accuracy on held-out validatio
 │   ├── phase2_yolo.py            # Phase 2: YOLO Analysis
 │   ├── phase3_balance.py         # Phase 3: Traffic-Balanced Selection
 │   ├── phase4_roi_tool.py        # Phase 4: ROI Definition Tool
-│   └── phase5_crop.py            # Phase 5: Batch Cropping
+│   ├── phase5_crop.py            # Phase 5: Batch Cropping
+│   ├── phase6_label_tool.py      # Phase 6: Labeling Tool
+│   └── phase7_split.py           # Phase 7: Train/Val Split
 │
 ├── traffic_dataset/              # Working directory for all data
 │   ├── inventory.json            # Container structure (Phase 1a output)
@@ -278,19 +280,68 @@ python -m dataset_pipeline.phase5_crop --validate-only
 
 **Output**: 16,000 cropped 64×64 images in `crops/likely_{level}/` folders
 
-### ❌ **Phase 6: Labeling & Verification (Interactive Tool)**
-**Status**: Not implemented
+### ✅ **Phase 6: Labeling & Verification** (`phase6_label_tool.py`)
+**Status**: Implemented
 **Purpose**: Human verification of auto-assigned labels
 **Time**: 2-3 hours (human-in-the-loop)
 
-Interactive tool to verify/correct YOLO-assigned traffic labels.
+Interactive OpenCV-based GUI for verifying and correcting YOLO-assigned traffic labels. Shows 64×64 crops scaled up for visibility with predicted labels, allowing quick confirmation or correction.
 
-### ❌ **Phase 7: Train/Val Split**
-**Status**: Not implemented
+**Controls**:
+- **Enter**: Confirm predicted label
+- **1-4**: Assign to specific traffic level (1=empty, 2=light, 3=moderate, 4=heavy)
+- **S**: Skip image
+- **B**: Go back (undo last label)
+- **Q**: Save progress and quit
+
+```bash
+# Run labeling tool (interactive)
+python -m dataset_pipeline.phase6_label_tool
+
+# Resume from previous session
+python -m dataset_pipeline.phase6_label_tool --resume
+
+# Validate only
+python -m dataset_pipeline.phase6_label_tool --validate-only
+```
+
+**Outputs**:
+- Images organized in `labeled/{class}/` directories by verified label
+- `labeling_progress.json` - Progress tracking with correction statistics
+
+**Features**:
+- Visual feedback with scaled-up crops for easy viewing
+- Live progress tracking (confirmed, corrected, skipped counts)
+- Correction pattern analysis
+- Resume capability - can quit and continue later
+- Undo functionality to correct mistakes
+- Priority-based processing (heavy → moderate → light → empty)
+
+### ✅ **Phase 7: Train/Val Split** (`phase7_split.py`)
+**Status**: Implemented
 **Purpose**: Create 80/20 train/validation split
 **Time**: <1 minute
 
-Splits verified labels into training (12,800) and validation (3,200) sets.
+Splits verified labels into training (12,800) and validation (3,200) sets using stratified random sampling to maintain class balance.
+
+```bash
+# Run train/val split
+python -m dataset_pipeline.phase7_split
+
+# Resume from existing split
+python -m dataset_pipeline.phase7_split --resume
+
+# Validate only
+python -m dataset_pipeline.phase7_split --validate-only
+```
+
+**Output**: Images in `final/train/` and `final/val/` directories, plus `split_manifest.json`
+
+**Features**:
+- Stratified 80/20 split per traffic class
+- Reproducible random seed for consistent splits
+- Copy operation preserves original labeled images
+- Detailed manifest with per-class statistics
 
 ## 🚀 Quick Start
 
@@ -324,6 +375,39 @@ AZURE_STORAGE_URL=https://borderimgstorage.blob.core.windows.net/
 
 ### Running the Pipeline
 
+**NEW: Unified CLI** (Recommended)
+
+Use `main.py` for streamlined pipeline management:
+
+```bash
+# Check pipeline status
+python main.py status
+
+# Run entire pipeline with resume capability
+python main.py run --all --resume
+
+# Run specific phase
+python main.py run --phase 2 --device mps
+
+# Run from phase 3 onwards
+python main.py run --from-phase 3 --resume
+
+# Dry run to see execution plan
+python main.py run --all --dry-run
+
+# Validate all completed phases
+python main.py validate --all
+
+# Reset a phase (creates backup)
+python main.py reset --phase 5
+
+# Get help
+python main.py --help
+python main.py run --help
+```
+
+**OR: Run phases individually** (Manual)
+
 Execute phases sequentially:
 
 ```bash
@@ -351,7 +435,11 @@ python -m dataset_pipeline.phase4_roi_tool
 # Phase 5: Batch cropping (5-10 min)
 python -m dataset_pipeline.phase5_crop
 
-# ... Phases 6-7 to be implemented
+# Phase 6: Labeling verification (~2-3 hours, interactive)
+python -m dataset_pipeline.phase6_label_tool
+
+# Phase 7: Train/val split (<1 min)
+python -m dataset_pipeline.phase7_split
 ```
 
 ### Resume Capability
@@ -651,4 +739,4 @@ For questions or issues, please open an issue in the GitHub repository.
 ---
 
 **Last Updated**: January 2, 2026
-**Project Status**: Phases 1-5 implemented (6/7 phases complete)
+**Project Status**: All 7 phases implemented (pipeline complete)
