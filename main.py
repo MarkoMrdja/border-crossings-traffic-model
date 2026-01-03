@@ -102,6 +102,19 @@ PHASE_REGISTRY = {
         init_kwargs=["pipeline_config"],
         runtime_kwargs=["device", "model", "confidence"]
     ),
+    "2b": PhaseMetadata(
+        number="2b",
+        name="Label Review & Correction",
+        description="Review and correct YOLO auto-labels (OPTIONAL)",
+        class_name="LabelReviewTool",
+        output_files=["yolo_results.json (modified)"],
+        dependencies=["2"],
+        is_interactive=True,
+        estimated_time="2-3 hours for borderline cases",
+        requires_azure=False,
+        init_kwargs=["pipeline_config"],
+        runtime_kwargs=["borderline_only", "specific_ranges"]
+    ),
     "3": PhaseMetadata(
         number="3",
         name="Traffic-Balanced Selection",

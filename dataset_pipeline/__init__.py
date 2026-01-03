@@ -11,6 +11,7 @@ from .phase1_discover import StructureDiscoveryPhase
 from .phase1_sample import StratifiedSamplingPhase
 from .phase1_download import ParallelDownloadPhase
 from .phase2_yolo import YOLOAnalysisPhase
+from .phase2_review import LabelReviewTool
 from .phase3_balance import BalancedSelectionPhase
 from .phase4_roi_tool import ROIDefinitionTool
 from .phase5_crop import CropPhase
@@ -25,6 +26,7 @@ __all__ = [
     "StratifiedSamplingPhase",
     "ParallelDownloadPhase",
     "YOLOAnalysisPhase",
+    "LabelReviewTool",
     "BalancedSelectionPhase",
     "ROIDefinitionTool",
     "CropPhase",
