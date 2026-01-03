@@ -14,6 +14,8 @@ from .phase2_yolo import YOLOAnalysisPhase
 from .phase3_balance import BalancedSelectionPhase
 from .phase4_roi_tool import ROIDefinitionTool
 from .phase5_crop import CropPhase
+from .phase6_label_tool import LabelingTool
+from .phase7_split import TrainValSplitPhase
 
 # Import verification tools
 from .verify_yolo import YOLOVerification
@@ -26,5 +28,7 @@ __all__ = [
     "BalancedSelectionPhase",
     "ROIDefinitionTool",
     "CropPhase",
+    "LabelingTool",
+    "TrainValSplitPhase",
     "YOLOVerification",
 ]

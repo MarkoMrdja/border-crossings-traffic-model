@@ -112,10 +112,10 @@ class BalancedSelectionPhase(PipelinePhase):
             # Log summary
             self.logger.info(
                 f"  Selected {len(selected)}/{len(camera_analyses)} samples - "
-                f"Empty: {stats['selected_by_level']['likely_empty']}, "
-                f"Light: {stats['selected_by_level']['likely_light']}, "
-                f"Moderate: {stats['selected_by_level']['likely_moderate']}, "
-                f"Heavy: {stats['selected_by_level']['likely_heavy']}"
+                f"Empty: {stats['selected_by_level'].get('likely_empty', 0)}, "
+                f"Light: {stats['selected_by_level'].get('likely_light', 0)}, "
+                f"Moderate: {stats['selected_by_level'].get('likely_moderate', 0)}, "
+                f"Heavy: {stats['selected_by_level'].get('likely_heavy', 0)}"
             )
 
         # Create output structure

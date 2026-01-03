@@ -73,8 +73,8 @@ PHASE_REGISTRY = {
         dependencies=["1a"],
         is_interactive=False,
         estimated_time="10-30 minutes",
-        requires_azure=False,
-        init_kwargs=["pipeline_config"]
+        requires_azure=True,
+        init_kwargs=["pipeline_config", "azure_config"]
     ),
     "1c": PhaseMetadata(
         number="1c",
