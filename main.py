@@ -178,7 +178,7 @@ PHASE_REGISTRY = {
 }
 
 # Ordered list of phases for sequential execution
-PHASE_ORDER = ["1a", "1b", "1c", "2", "3", "4", "5", "6", "7"]
+PHASE_ORDER = ["1a", "1b", "1c", "2", "2b", "3", "4", "5", "6", "7"]
 
 
 # ============================================================================
