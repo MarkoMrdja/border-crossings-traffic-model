@@ -285,3 +285,38 @@ LANE_DETECTION_CONFIG = {
         "low": 0.30
     }
 }
+
+
+# Excluded Cameras (Corrupted Data)
+# These cameras will be skipped during all pipeline phases
+EXCLUDED_CAMERAS = [
+    "VATIN_U",   # Corrupted data
+    "VATIN_I",   # Corrupted data
+    "GOSTUN_I",  # Corrupted data
+]
+
+
+def is_camera_excluded(camera_id: str) -> bool:
+    """
+    Check if a camera should be excluded from processing.
+
+    Args:
+        camera_id: Camera identifier (e.g., "VATIN_U")
+
+    Returns:
+        True if camera should be excluded, False otherwise
+    """
+    return camera_id in EXCLUDED_CAMERAS
+
+
+def filter_excluded_cameras(camera_list: List[str]) -> List[str]:
+    """
+    Filter out excluded cameras from a list.
+
+    Args:
+        camera_list: List of camera identifiers
+
+    Returns:
+        Filtered list without excluded cameras
+    """
+    return [cam for cam in camera_list if not is_camera_excluded(cam)]
