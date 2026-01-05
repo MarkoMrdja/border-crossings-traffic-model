@@ -251,3 +251,37 @@ def get_season(month: str) -> str:
 
     # Default fallback
     return "unknown"
+
+
+# Lane Detection Configuration
+LANE_DETECTION_CONFIG = {
+    "mode": "single",  # or "multi"
+    "edge_detection": {
+        "method": "canny",
+        "adaptive_thresholds": True,
+        "lower_percentile": 0.5,
+        "upper_percentile": 1.5,
+        "lower_threshold": 50,
+        "upper_threshold": 150
+    },
+    "line_detection": {
+        "method": "hough",
+        "rho": 1,
+        "theta_resolution": 180,  # degrees
+        "threshold": 30,  # Lowered from 50 to detect more lines
+        "min_line_length": 50,  # Lowered from 100 to catch shorter segments
+        "max_line_gap": 30,  # Lowered from 50 for better continuity
+        "vertical_angle_range": (60, 120),   # degrees
+        "horizontal_angle_range": [(0, 30), (150, 180)]
+    },
+    "polygon_simplification": {
+        "epsilon_factor": 0.02,  # % of perimeter
+        "min_vertices": 3,
+        "max_vertices": 12
+    },
+    "confidence_thresholds": {
+        "high": 0.75,
+        "medium": 0.50,
+        "low": 0.30
+    }
+}
