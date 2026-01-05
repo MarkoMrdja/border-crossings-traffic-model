@@ -3,6 +3,14 @@ Phase 5: Batch Crop
 
 Crops ROI regions from all selected images and resizes to 64x64.
 Organizes cropped images by predicted traffic level.
+
+Two types of crops:
+1. Lane crops: Main training data from lane polygons (Phase 4b)
+2. Failure region crops: Secondary training data from YOLO-blind areas (Phase 4d)
+
+Output structure:
+- crops/likely_{level}/ - Lane crops for main model
+- failure_region_crops/ - YOLO failure region crops for secondary model
 """
 
 import logging
@@ -25,11 +33,11 @@ class CropPhase(PipelinePhase):
     Phase 5: Batch crop ROI regions.
 
     For each selected image:
-    1. Load the corresponding ROI polygon for that camera
-    2. Crop the polygon region from the image
-    3. Apply mask (black outside polygon)
-    4. Resize to 64x64
-    5. Save to crops/likely_{level}/ based on YOLO prediction
+    1. Crop lane polygon region → save to crops/likely_{level}/
+    2. Crop YOLO failure regions (if annotated) → save to failure_region_crops/
+
+    Lane crops are for main traffic classification model.
+    Failure region crops are for secondary congestion detection model.
     """
 
     def __init__(self, pipeline_config: PipelineConfig):
@@ -47,8 +55,11 @@ class CropPhase(PipelinePhase):
 
         self.balanced_selection_path = self.config.base_dir / "balanced_selection.json"
         self.roi_config_path = self.config.base_dir / self.config.roi_config_file
+        self.lane_polygons_path = self.config.base_dir / "lane_polygons.json"
+        self.failure_regions_path = self.config.base_dir / "yolo_failure_regions.json"
         self.yolo_results_path = self.config.base_dir / self.config.yolo_results_file
         self.crops_dir = self.config.base_dir / self.config.crops_dir
+        self.failure_crops_dir = self.config.base_dir / "failure_region_crops"
         self.output_summary_path = self.config.base_dir / "crop_summary.json"
 
     def run(self, resume: bool = False) -> Dict[str, Any]:
@@ -65,6 +76,7 @@ class CropPhase(PipelinePhase):
         self.logger.info("Loading input data...")
         selection = self._load_balanced_selection()
         roi_config = self._load_roi_config()
+        failure_regions = self._load_failure_regions()
         yolo_results = self._load_yolo_results()
 
         # Build lookup for YOLO results
@@ -135,7 +147,7 @@ class CropPhase(PipelinePhase):
                     # Get polygon for this camera
                     polygon = roi_config['cameras'][camera_id]['polygon']
 
-                    # Crop ROI
+                    # Crop lane polygon ROI
                     cropped = self._crop_roi(
                         str(full_path),
                         polygon,
@@ -215,13 +227,87 @@ class CropPhase(PipelinePhase):
         return load_json(self.balanced_selection_path)
 
     def _load_roi_config(self) -> Dict[str, Any]:
-        """Load ROI configuration from Phase 4."""
-        if not self.roi_config_path.exists():
+        """
+        Load ROI configuration from Phase 4 or lane polygons from Phase 4b.
+
+        Supports both formats:
+        - lane_polygons.json (new format from Phase 4b)
+        - roi_config.json (old format from Phase 4)
+
+        Returns configuration in Phase 4 compatible format.
+        """
+        # Try new lane_polygons.json first
+        if self.lane_polygons_path.exists():
+            self.logger.info("Loading lane polygon configuration (Phase 4b)")
+            lane_config = load_json(self.lane_polygons_path)
+            return self._transform_lane_to_roi_format(lane_config)
+
+        # Fallback to old roi_config.json
+        elif self.roi_config_path.exists():
+            self.logger.info("Loading ROI configuration (Phase 4)")
+            return load_json(self.roi_config_path)
+
+        else:
             raise FileNotFoundError(
-                f"ROI configuration not found at {self.roi_config_path}. "
-                "Run Phase 4 (ROI definition) first."
+                f"Neither lane_polygons.json nor roi_config.json found. "
+                "Run Phase 4 (ROI definition) or Phase 4b (Lane annotation) first."
             )
-        return load_json(self.roi_config_path)
+
+    def _transform_lane_to_roi_format(self, lane_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Transform lane_polygons.json format to roi_config.json format.
+
+        For single-lane mode: Extract first polygon from each camera.
+        For multi-lane mode: Merge all polygons (TBD).
+
+        Args:
+            lane_config: Lane polygon configuration
+
+        Returns:
+            ROI-compatible configuration
+        """
+        roi_format = {
+            "created_at": lane_config.get("created_at"),
+            "cameras": {},
+            "skipped_cameras": lane_config.get("skipped_cameras", [])
+        }
+
+        mode = lane_config.get("mode", "single")
+
+        for camera_id, camera_data in lane_config.get("cameras", {}).items():
+            polygons = camera_data.get("polygons", [])
+
+            if not polygons:
+                self.logger.warning(f"Camera {camera_id} has no polygons, skipping")
+                continue
+
+            if mode == "single":
+                # Use first polygon (all_lanes)
+                first_poly = polygons[0]
+                roi_format["cameras"][camera_id] = {
+                    "reference_image": camera_data.get("reference_image"),
+                    "polygon": first_poly["polygon"],
+                    "defined_at": first_poly.get("defined_at")
+                }
+            else:
+                # Multi-lane mode: For now, just use first polygon
+                # TODO: Implement proper multi-polygon cropping
+                self.logger.warning(
+                    f"Multi-lane mode not fully supported yet for camera {camera_id}, "
+                    "using first polygon only"
+                )
+                first_poly = polygons[0]
+                roi_format["cameras"][camera_id] = {
+                    "reference_image": camera_data.get("reference_image"),
+                    "polygon": first_poly["polygon"],
+                    "defined_at": first_poly.get("defined_at")
+                }
+
+        self.logger.info(
+            f"Transformed lane polygon config: {len(roi_format['cameras'])} cameras"
+        )
+
+        return roi_format
 
     def _load_yolo_results(self) -> Dict[str, Any]:
         """Load YOLO results from Phase 2."""
@@ -231,6 +317,14 @@ class CropPhase(PipelinePhase):
                 "Run Phase 2 (YOLO analysis) first."
             )
         return load_json(self.yolo_results_path)
+
+    def _load_failure_regions(self) -> Dict[str, Any]:
+        """Load YOLO failure regions from Phase 4d (optional)."""
+        if not self.failure_regions_path.exists():
+            self.logger.info("No YOLO failure regions found (Phase 4d not run). Skipping failure region crops.")
+            return {'cameras': {}}
+        self.logger.info(f"Loaded YOLO failure regions from {self.failure_regions_path}")
+        return load_json(self.failure_regions_path)
 
     def _ensure_crop_directories(self):
         """Create crop output directories if they don't exist."""

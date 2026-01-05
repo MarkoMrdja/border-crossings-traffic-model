@@ -76,8 +76,8 @@ class LabelReviewTool(PipelinePhase):
 
         # Display settings
         self.window_name = "Label Review Tool"
-        self.display_width = 1200
-        self.display_height = 900
+        self.display_width = 1400
+        self.display_height = 1000
 
         # Colors (BGR format)
         self.color_bg = (40, 40, 40)
@@ -146,12 +146,25 @@ class LabelReviewTool(PipelinePhase):
             save_json(self.yolo_results, self.backup_file)
             self.logger.info(f"Created backup at {self.backup_file}")
 
-        # Load progress if resuming
-        if resume and self.progress_file.exists():
+        # Auto-resume if progress exists (Phase 2b is interactive, always makes sense to resume)
+        if self.progress_file.exists():
             progress = load_json(self.progress_file)
-            self.current_index = progress.get("current_index", 0)
-            self.modifications = progress.get("modifications", {})
-            self.logger.info(f"Resuming from index {self.current_index}")
+            saved_index = progress.get("current_index", 0)
+            saved_mods = progress.get("modifications", {})
+
+            # Only resume if there's meaningful progress
+            if saved_index > 0 or saved_mods:
+                self.current_index = saved_index
+                self.modifications = saved_mods
+                self.logger.info(
+                    f"✓ Auto-resuming from image {self.current_index + 1}/{len(self.analyses)} "
+                    f"with {len(self.modifications)} modifications saved"
+                )
+            else:
+                self.logger.info("Starting fresh review session"
+                )
+        else:
+            self.logger.info("Starting fresh review session")
 
         # Run interactive review
         stats = self._interactive_review()
@@ -198,6 +211,9 @@ class LabelReviewTool(PipelinePhase):
 
         start_time = datetime.now()
         reviewed_count = 0
+        autosave_interval = 10  # Auto-save every 10 images
+
+        self.logger.info(f"Starting review from image {self.current_index + 1}")
 
         while self.current_index < len(self.analyses):
             analysis = self.analyses[self.current_index]
@@ -228,10 +244,20 @@ class LabelReviewTool(PipelinePhase):
                 self.current_index += 1
                 reviewed_count += 1
 
+                # Auto-save every N images
+                if reviewed_count % autosave_interval == 0:
+                    self._save_progress()
+                    self.logger.debug(f"Auto-saved at image {self.current_index}")
+
             elif key == 13:  # Enter - confirm current label
                 self.history.append(self.current_index)
                 self.current_index += 1
                 reviewed_count += 1
+
+                # Auto-save every N images
+                if reviewed_count % autosave_interval == 0:
+                    self._save_progress()
+                    self.logger.debug(f"Auto-saved at image {self.current_index}")
 
             elif key == ord('b') or key == ord('B'):  # Back
                 if self.history:
@@ -249,6 +275,9 @@ class LabelReviewTool(PipelinePhase):
                     self.logger.debug(f"Reset {image_path} to auto-label")
 
         cv2.destroyAllWindows()
+
+        # Final save
+        self._save_progress()
 
         # Calculate statistics
         duration = (datetime.now() - start_time).total_seconds()
@@ -322,8 +351,11 @@ class LabelReviewTool(PipelinePhase):
             x1, y1, x2, y2 = map(int, xyxy)
             cv2.rectangle(img, (x1, y1), (x2, y2), self.color_box, 2)
 
-            # Add class label
-            label = box.get("class", "vehicle")
+            # Add class label (convert to string for OpenCV)
+            class_id = box.get("class", 0)
+            # YOLO COCO classes: 2=car, 3=motorcycle, 5=bus, 7=truck
+            class_names = {2: "car", 3: "moto", 5: "bus", 7: "truck"}
+            label = class_names.get(class_id, f"class{class_id}")
             cv2.putText(
                 img,
                 label,
@@ -369,22 +401,24 @@ class LabelReviewTool(PipelinePhase):
             analysis: YOLO analysis dictionary
             y_start: Y-coordinate to start drawing
         """
-        y = y_start + 30
-        x_left = 50
+        y = y_start + 20
+        x_left = 40
+        x_right = self.display_width // 2 + 100
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.7
-        thickness = 2
+        font_scale_title = 0.6
+        font_scale_text = 0.5
+        thickness = 1
 
-        # Progress
-        progress_text = f"Image {self.current_index + 1} / {len(self.analyses)}"
-        cv2.putText(frame, progress_text, (x_left, y), font, font_scale, self.color_text, thickness)
-        y += 40
+        # Left column: Progress and current status
+        progress_text = f"Image {self.current_index + 1} / {len(self.analyses)} | Modified: {len(self.modifications)}"
+        cv2.putText(frame, progress_text, (x_left, y), font, font_scale_title, self.color_text, 2)
+        y += 30
 
         # Vehicle count
         vehicle_count = analysis.get("vehicle_count", 0)
         count_text = f"Vehicles detected: {vehicle_count}"
-        cv2.putText(frame, count_text, (x_left, y), font, font_scale, self.color_text, thickness)
-        y += 40
+        cv2.putText(frame, count_text, (x_left, y), font, font_scale_text, self.color_text, thickness)
+        y += 25
 
         # Current label
         current_label = analysis.get("traffic_level", "unknown")
@@ -397,56 +431,37 @@ class LabelReviewTool(PipelinePhase):
             label_color = self.color_current
             label_text = f"Current: {current_label.replace('likely_', '').upper()} (auto)"
 
-        cv2.putText(frame, label_text, (x_left, y), font, font_scale, label_color, thickness)
-        y += 60
-
-        # Options
-        cv2.putText(
-            frame,
-            "Press number to assign label:",
-            (x_left, y),
-            font,
-            font_scale,
-            self.color_options,
-            1
-        )
+        cv2.putText(frame, label_text, (x_left, y), font, font_scale_text, label_color, 2)
         y += 35
-
-        options = [
-            "1: Empty",
-            "2: Light",
-            "3: Moderate",
-            "4: Heavy"
-        ]
-        for option in options:
-            cv2.putText(frame, option, (x_left + 30, y), font, 0.6, self.color_options, 1)
-            y += 30
-
-        y += 20
-
-        # Controls
-        controls = [
-            "Enter: Confirm current label",
-            "B: Back to previous",
-            "S: Skip",
-            "R: Reset to auto-label",
-            "Q: Save and quit"
-        ]
-        for control in controls:
-            cv2.putText(frame, control, (x_left, y), font, 0.5, self.color_options, 1)
-            y += 25
 
         # Camera ID
         camera = analysis.get("camera_id", "unknown")
-        cv2.putText(
-            frame,
-            f"Camera: {camera}",
-            (self.display_width - 300, y_start + 30),
-            font,
-            0.6,
-            self.color_text,
-            1
-        )
+        cv2.putText(frame, f"Camera: {camera}", (x_left, y), font, font_scale_text, self.color_text, thickness)
+
+        # Right column: Options and controls
+        y_right = y_start + 20
+        cv2.putText(frame, "Assign label:", (x_right, y_right), font, font_scale_title, self.color_options, thickness)
+        y_right += 25
+
+        options = ["1: Empty", "2: Light", "3: Moderate", "4: Heavy"]
+        for option in options:
+            cv2.putText(frame, option, (x_right + 10, y_right), font, font_scale_text, self.color_options, thickness)
+            y_right += 22
+
+        y_right += 10
+        cv2.putText(frame, "Controls:", (x_right, y_right), font, font_scale_title, self.color_options, thickness)
+        y_right += 25
+
+        controls = [
+            "Enter: Keep current",
+            "B: Back",
+            "S: Skip",
+            "R: Reset",
+            "Q: Quit & save"
+        ]
+        for control in controls:
+            cv2.putText(frame, control, (x_right + 10, y_right), font, font_scale_text, self.color_options, thickness)
+            y_right += 22
 
     def _save_progress(self):
         """Save current progress to resume later."""
@@ -483,6 +498,30 @@ class LabelReviewTool(PipelinePhase):
         if self.progress_file.exists():
             self.progress_file.unlink()
             self.logger.info("Cleared progress file")
+
+    def validate(self) -> bool:
+        """
+        Validate that review phase completed successfully.
+
+        Phase 2b is optional, so validation always passes if YOLO results exist.
+        Checks if backup was created (indicating at least one review session).
+
+        Returns:
+            True if YOLO results exist (phase is optional)
+        """
+        # Check if YOLO results exist (required for this phase to have meaning)
+        if not self.yolo_results_path.exists():
+            self.logger.error(f"YOLO results not found: {self.yolo_results_path}")
+            return False
+
+        # Phase 2b is optional - if YOLO results exist, validation passes
+        # Backup file indicates review was at least started
+        if self.backup_file.exists():
+            self.logger.info("Review phase validated: backup found")
+        else:
+            self.logger.info("Review phase validated: YOLO results exist (phase not run)")
+
+        return True
 
 
 def main():
