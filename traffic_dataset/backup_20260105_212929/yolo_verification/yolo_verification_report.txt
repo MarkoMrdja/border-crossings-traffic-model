@@ -1,0 +1,117 @@
+================================================================================
+YOLO RESULTS VERIFICATION REPORT
+================================================================================
+
+SUMMARY
+--------------------------------------------------------------------------------
+Total images analyzed: 22,398
+Model: yolo11n
+Device: mps
+Confidence threshold: 0.25
+
+TRAFFIC LEVEL DISTRIBUTION
+--------------------------------------------------------------------------------
+  likely_empty        : 12,366 ( 55.2%)
+  likely_light        :  4,489 ( 20.0%)
+  likely_moderate     :  4,298 ( 19.2%)
+  likely_heavy        :  1,245 (  5.6%)
+
+VEHICLE COUNT STATISTICS
+--------------------------------------------------------------------------------
+  Mean:             4.3
+  Median:             2
+  Std Dev:          5.6
+  Min:                0
+  Max:               39
+  25th percentile:      0
+  75th percentile:      6
+
+PER-CAMERA SUMMARY (Top 10 by total count)
+--------------------------------------------------------------------------------
+Camera             Empty    Light   Moderate    Heavy    Total
+--------------------------------------------------------------------------------
+BATROVCI_I           436       90        101       73      700
+BATROVCI_U           316      134        150      100      700
+DJALA_I              639       39         22        0      700
+DJALA_U              627       34         38        1      700
+GOSTUN_I             508       73         88       31      700
+GOSTUN_U             510       67         94       29      700
+GRADINA_I            192      182        213      113      700
+GRADINA_U            369       93        188       50      700
+HORGOS_I             134      174        253      139      700
+HORGOS_U              82      199        325       94      700
+
+POTENTIAL ISSUES
+--------------------------------------------------------------------------------
+
+CRITICAL (42 issues):
+--------------------------------------------------------------------------------
+  - DJALA_I has only 39 likely_light images (need 125)
+  - DJALA_I has only 22 likely_moderate images (need 125)
+  - DJALA_I has only 0 likely_heavy images (need 125)
+  - DJALA_U has only 34 likely_light images (need 125)
+  - DJALA_U has only 38 likely_moderate images (need 125)
+  - DJALA_U has only 1 likely_heavy images (need 125)
+  - GOSTUN_I has only 31 likely_heavy images (need 125)
+  - GOSTUN_U has only 29 likely_heavy images (need 125)
+  - GRADINA_U has only 50 likely_heavy images (need 125)
+  - JABUKA_I has only 60 likely_light images (need 125)
+  - JABUKA_I has only 29 likely_moderate images (need 125)
+  - JABUKA_I has only 1 likely_heavy images (need 125)
+  - JABUKA_U has only 31 likely_moderate images (need 125)
+  - JABUKA_U has only 0 likely_heavy images (need 125)
+  - KELEBIJA_I has only 26 likely_heavy images (need 125)
+  - KELEBIJA_U has only 41 likely_moderate images (need 125)
+  - KELEBIJA_U has only 7 likely_heavy images (need 125)
+  - KOTROMAN_I has only 34 likely_moderate images (need 125)
+  - KOTROMAN_I has only 0 likely_heavy images (need 125)
+  - KOTROMAN_U has only 38 likely_light images (need 125)
+  ... and 22 more
+
+WARNING (21 issues):
+--------------------------------------------------------------------------------
+  - BATROVCI_I has only 90 likely_light images (need 125)
+  - BATROVCI_I has only 101 likely_moderate images (need 125)
+  - BATROVCI_I has only 73 likely_heavy images (need 125)
+  - BATROVCI_U has only 100 likely_heavy images (need 125)
+  - GOSTUN_I has only 73 likely_light images (need 125)
+  - GOSTUN_I has only 88 likely_moderate images (need 125)
+  - GOSTUN_U has only 67 likely_light images (need 125)
+  - GOSTUN_U has only 94 likely_moderate images (need 125)
+  - GRADINA_I has only 113 likely_heavy images (need 125)
+  - GRADINA_U has only 93 likely_light images (need 125)
+  - HORGOS_U has only 82 likely_empty images (need 125)
+  - HORGOS_U has only 94 likely_heavy images (need 125)
+  - JABUKA_U has only 98 likely_light images (need 125)
+  - KELEBIJA_U has only 116 likely_light images (need 125)
+  - MZVORNIK_U has only 113 likely_moderate images (need 125)
+  - PRESEVO_I has only 87 likely_light images (need 125)
+  - PRESEVO_I has only 121 likely_moderate images (need 125)
+  - PRESEVO_U has only 90 likely_empty images (need 125)
+  - RACA_I has only 75 likely_heavy images (need 125)
+  - SPILJANI_U has only 74 likely_moderate images (need 125)
+  ... and 1 more
+
+INFO (17 issues):
+--------------------------------------------------------------------------------
+  - BATROVCI_I is 62.3% likely_empty
+  - DJALA_I is 91.3% likely_empty
+  - DJALA_U is 89.6% likely_empty
+  - GOSTUN_I is 72.6% likely_empty
+  - GOSTUN_U is 72.9% likely_empty
+  - JABUKA_I is 87.1% likely_empty
+  - JABUKA_U is 81.6% likely_empty
+  - KELEBIJA_U is 76.6% likely_empty
+  - KOTROMAN_I is 74.3% likely_empty
+  - KOTROMAN_U is 93.9% likely_empty
+  - SID_I is 75.9% likely_empty
+  - SPILJANI_U is 66.7% likely_empty
+  - TRBUSNICA_U is 66.4% likely_empty
+  - VATIN_I is 79.6% likely_moderate
+  - VATIN_U is 75.6% likely_empty
+  - VRSKA-CUKA_I is 75.4% likely_empty
+  - VRSKA-CUKA_U is 98.3% likely_empty
+
+================================================================================
+END OF REPORT
+================================================================================

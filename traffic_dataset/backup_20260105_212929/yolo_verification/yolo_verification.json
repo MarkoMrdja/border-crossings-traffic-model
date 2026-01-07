@@ -1,0 +1,926 @@
+{
+  "yolo_config": {
+    "model": "yolo11n",
+    "device": "mps",
+    "confidence_threshold": 0.25
+  },
+  "statistics": {
+    "total_images": 22398,
+    "by_traffic_level": {
+      "likely_empty": 12366,
+      "likely_light": 4489,
+      "likely_moderate": 4298,
+      "likely_heavy": 1245
+    },
+    "by_traffic_level_pct": {
+      "likely_empty": 55.21028663273506,
+      "likely_light": 20.041968032860076,
+      "likely_moderate": 19.18921332261809,
+      "likely_heavy": 5.558532011786767
+    },
+    "by_camera": {
+      "BATROVCI_I": {
+        "likely_empty": 436,
+        "likely_light": 90,
+        "likely_moderate": 101,
+        "likely_heavy": 73
+      },
+      "BATROVCI_U": {
+        "likely_empty": 316,
+        "likely_light": 134,
+        "likely_moderate": 150,
+        "likely_heavy": 100
+      },
+      "DJALA_I": {
+        "likely_empty": 639,
+        "likely_moderate": 22,
+        "likely_light": 39
+      },
+      "DJALA_U": {
+        "likely_empty": 627,
+        "likely_moderate": 38,
+        "likely_light": 34,
+        "likely_heavy": 1
+      },
+      "GOSTUN_I": {
+        "likely_empty": 508,
+        "likely_light": 73,
+        "likely_moderate": 88,
+        "likely_heavy": 31
+      },
+      "GOSTUN_U": {
+        "likely_empty": 510,
+        "likely_light": 67,
+        "likely_moderate": 94,
+        "likely_heavy": 29
+      },
+      "GRADINA_I": {
+        "likely_empty": 192,
+        "likely_moderate": 213,
+        "likely_light": 182,
+        "likely_heavy": 113
+      },
+      "GRADINA_U": {
+        "likely_empty": 369,
+        "likely_moderate": 188,
+        "likely_light": 93,
+        "likely_heavy": 50
+      },
+      "HORGOS_I": {
+        "likely_empty": 134,
+        "likely_moderate": 253,
+        "likely_light": 174,
+        "likely_heavy": 139
+      },
+      "HORGOS_U": {
+        "likely_light": 199,
+        "likely_empty": 82,
+        "likely_moderate": 325,
+        "likely_heavy": 94
+      },
+      "JABUKA_I": {
+        "likely_empty": 610,
+        "likely_light": 60,
+        "likely_moderate": 29,
+        "likely_heavy": 1
+      },
+      "JABUKA_U": {
+        "likely_empty": 571,
+        "likely_light": 98,
+        "likely_moderate": 31
+      },
+      "KELEBIJA_I": {
+        "likely_empty": 246,
+        "likely_light": 168,
+        "likely_moderate": 260,
+        "likely_heavy": 26
+      },
+      "KELEBIJA_U": {
+        "likely_empty": 536,
+        "likely_light": 116,
+        "likely_heavy": 7,
+        "likely_moderate": 41
+      },
+      "KOTROMAN_I": {
+        "likely_empty": 520,
+        "likely_light": 146,
+        "likely_moderate": 34
+      },
+      "KOTROMAN_U": {
+        "likely_empty": 657,
+        "likely_light": 38,
+        "likely_moderate": 5
+      },
+      "MZVORNIK_I": {
+        "likely_empty": 323,
+        "likely_light": 231,
+        "likely_moderate": 146
+      },
+      "MZVORNIK_U": {
+        "likely_empty": 385,
+        "likely_light": 201,
+        "likely_moderate": 113,
+        "likely_heavy": 1
+      },
+      "PRESEVO_I": {
+        "likely_empty": 334,
+        "likely_moderate": 121,
+        "likely_light": 87,
+        "likely_heavy": 158
+      },
+      "PRESEVO_U": {
+        "likely_empty": 90,
+        "likely_light": 144,
+        "likely_heavy": 267,
+        "likely_moderate": 199
+      },
+      "RACA_I": {
+        "likely_moderate": 257,
+        "likely_empty": 234,
+        "likely_light": 134,
+        "likely_heavy": 75
+      },
+      "RACA_U": {
+        "likely_empty": 258,
+        "likely_light": 165,
+        "likely_moderate": 247,
+        "likely_heavy": 30
+      },
+      "SID_I": {
+        "likely_empty": 530,
+        "likely_light": 126,
+        "likely_moderate": 42
+      },
+      "SID_U": {
+        "likely_empty": 200,
+        "likely_light": 352,
+        "likely_moderate": 139,
+        "likely_heavy": 9
+      },
+      "SPILJANI_I": {
+        "likely_empty": 225,
+        "likely_light": 281,
+        "likely_moderate": 183,
+        "likely_heavy": 11
+      },
+      "SPILJANI_U": {
+        "likely_empty": 467,
+        "likely_light": 157,
+        "likely_moderate": 74,
+        "likely_heavy": 2
+      },
+      "TRBUSNICA_I": {
+        "likely_light": 301,
+        "likely_empty": 152,
+        "likely_moderate": 246,
+        "likely_heavy": 1
+      },
+      "TRBUSNICA_U": {
+        "likely_empty": 465,
+        "likely_light": 187,
+        "likely_moderate": 48
+      },
+      "VATIN_I": {
+        "likely_moderate": 557,
+        "likely_light": 111,
+        "likely_heavy": 27,
+        "likely_empty": 5
+      },
+      "VATIN_U": {
+        "likely_empty": 529,
+        "likely_light": 144,
+        "likely_moderate": 27
+      },
+      "VRSKA-CUKA_I": {
+        "likely_empty": 528,
+        "likely_moderate": 26,
+        "likely_light": 146
+      },
+      "VRSKA-CUKA_U": {
+        "likely_empty": 688,
+        "likely_light": 11,
+        "likely_moderate": 1
+      }
+    },
+    "vehicle_count_stats": {
+      "mean": 4.265470131261719,
+      "median": 2.0,
+      "std": 5.641512144988898,
+      "min": 0,
+      "max": 39,
+      "percentile_25": 0.0,
+      "percentile_75": 6.0
+    }
+  },
+  "issues": [
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "DJALA_I",
+      "traffic_level": "likely_light",
+      "count": 39,
+      "needed": 125,
+      "message": "DJALA_I has only 39 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "DJALA_I",
+      "traffic_level": "likely_moderate",
+      "count": 22,
+      "needed": 125,
+      "message": "DJALA_I has only 22 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "DJALA_I",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "DJALA_I has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "DJALA_U",
+      "traffic_level": "likely_light",
+      "count": 34,
+      "needed": 125,
+      "message": "DJALA_U has only 34 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "DJALA_U",
+      "traffic_level": "likely_moderate",
+      "count": 38,
+      "needed": 125,
+      "message": "DJALA_U has only 38 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "DJALA_U",
+      "traffic_level": "likely_heavy",
+      "count": 1,
+      "needed": 125,
+      "message": "DJALA_U has only 1 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "GOSTUN_I",
+      "traffic_level": "likely_heavy",
+      "count": 31,
+      "needed": 125,
+      "message": "GOSTUN_I has only 31 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "GOSTUN_U",
+      "traffic_level": "likely_heavy",
+      "count": 29,
+      "needed": 125,
+      "message": "GOSTUN_U has only 29 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "GRADINA_U",
+      "traffic_level": "likely_heavy",
+      "count": 50,
+      "needed": 125,
+      "message": "GRADINA_U has only 50 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "JABUKA_I",
+      "traffic_level": "likely_light",
+      "count": 60,
+      "needed": 125,
+      "message": "JABUKA_I has only 60 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "JABUKA_I",
+      "traffic_level": "likely_moderate",
+      "count": 29,
+      "needed": 125,
+      "message": "JABUKA_I has only 29 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "JABUKA_I",
+      "traffic_level": "likely_heavy",
+      "count": 1,
+      "needed": 125,
+      "message": "JABUKA_I has only 1 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "JABUKA_U",
+      "traffic_level": "likely_moderate",
+      "count": 31,
+      "needed": 125,
+      "message": "JABUKA_U has only 31 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "JABUKA_U",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "JABUKA_U has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KELEBIJA_I",
+      "traffic_level": "likely_heavy",
+      "count": 26,
+      "needed": 125,
+      "message": "KELEBIJA_I has only 26 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KELEBIJA_U",
+      "traffic_level": "likely_moderate",
+      "count": 41,
+      "needed": 125,
+      "message": "KELEBIJA_U has only 41 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KELEBIJA_U",
+      "traffic_level": "likely_heavy",
+      "count": 7,
+      "needed": 125,
+      "message": "KELEBIJA_U has only 7 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KOTROMAN_I",
+      "traffic_level": "likely_moderate",
+      "count": 34,
+      "needed": 125,
+      "message": "KOTROMAN_I has only 34 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KOTROMAN_I",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "KOTROMAN_I has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KOTROMAN_U",
+      "traffic_level": "likely_light",
+      "count": 38,
+      "needed": 125,
+      "message": "KOTROMAN_U has only 38 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KOTROMAN_U",
+      "traffic_level": "likely_moderate",
+      "count": 5,
+      "needed": 125,
+      "message": "KOTROMAN_U has only 5 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "KOTROMAN_U",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "KOTROMAN_U has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "MZVORNIK_I",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "MZVORNIK_I has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "MZVORNIK_U",
+      "traffic_level": "likely_heavy",
+      "count": 1,
+      "needed": 125,
+      "message": "MZVORNIK_U has only 1 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "RACA_U",
+      "traffic_level": "likely_heavy",
+      "count": 30,
+      "needed": 125,
+      "message": "RACA_U has only 30 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "SID_I",
+      "traffic_level": "likely_moderate",
+      "count": 42,
+      "needed": 125,
+      "message": "SID_I has only 42 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "SID_I",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "SID_I has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "SID_U",
+      "traffic_level": "likely_heavy",
+      "count": 9,
+      "needed": 125,
+      "message": "SID_U has only 9 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "SPILJANI_I",
+      "traffic_level": "likely_heavy",
+      "count": 11,
+      "needed": 125,
+      "message": "SPILJANI_I has only 11 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "SPILJANI_U",
+      "traffic_level": "likely_heavy",
+      "count": 2,
+      "needed": 125,
+      "message": "SPILJANI_U has only 2 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "TRBUSNICA_I",
+      "traffic_level": "likely_heavy",
+      "count": 1,
+      "needed": 125,
+      "message": "TRBUSNICA_I has only 1 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "TRBUSNICA_U",
+      "traffic_level": "likely_moderate",
+      "count": 48,
+      "needed": 125,
+      "message": "TRBUSNICA_U has only 48 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "TRBUSNICA_U",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "TRBUSNICA_U has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VATIN_I",
+      "traffic_level": "likely_empty",
+      "count": 5,
+      "needed": 125,
+      "message": "VATIN_I has only 5 likely_empty images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VATIN_I",
+      "traffic_level": "likely_heavy",
+      "count": 27,
+      "needed": 125,
+      "message": "VATIN_I has only 27 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VATIN_U",
+      "traffic_level": "likely_moderate",
+      "count": 27,
+      "needed": 125,
+      "message": "VATIN_U has only 27 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VATIN_U",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "VATIN_U has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VRSKA-CUKA_I",
+      "traffic_level": "likely_moderate",
+      "count": 26,
+      "needed": 125,
+      "message": "VRSKA-CUKA_I has only 26 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VRSKA-CUKA_I",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "VRSKA-CUKA_I has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VRSKA-CUKA_U",
+      "traffic_level": "likely_light",
+      "count": 11,
+      "needed": 125,
+      "message": "VRSKA-CUKA_U has only 11 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VRSKA-CUKA_U",
+      "traffic_level": "likely_moderate",
+      "count": 1,
+      "needed": 125,
+      "message": "VRSKA-CUKA_U has only 1 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "critical",
+      "camera": "VRSKA-CUKA_U",
+      "traffic_level": "likely_heavy",
+      "count": 0,
+      "needed": 125,
+      "message": "VRSKA-CUKA_U has only 0 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "BATROVCI_I",
+      "traffic_level": "likely_light",
+      "count": 90,
+      "needed": 125,
+      "message": "BATROVCI_I has only 90 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "BATROVCI_I",
+      "traffic_level": "likely_moderate",
+      "count": 101,
+      "needed": 125,
+      "message": "BATROVCI_I has only 101 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "BATROVCI_I",
+      "traffic_level": "likely_heavy",
+      "count": 73,
+      "needed": 125,
+      "message": "BATROVCI_I has only 73 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "BATROVCI_U",
+      "traffic_level": "likely_heavy",
+      "count": 100,
+      "needed": 125,
+      "message": "BATROVCI_U has only 100 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "GOSTUN_I",
+      "traffic_level": "likely_light",
+      "count": 73,
+      "needed": 125,
+      "message": "GOSTUN_I has only 73 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "GOSTUN_I",
+      "traffic_level": "likely_moderate",
+      "count": 88,
+      "needed": 125,
+      "message": "GOSTUN_I has only 88 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "GOSTUN_U",
+      "traffic_level": "likely_light",
+      "count": 67,
+      "needed": 125,
+      "message": "GOSTUN_U has only 67 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "GOSTUN_U",
+      "traffic_level": "likely_moderate",
+      "count": 94,
+      "needed": 125,
+      "message": "GOSTUN_U has only 94 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "GRADINA_I",
+      "traffic_level": "likely_heavy",
+      "count": 113,
+      "needed": 125,
+      "message": "GRADINA_I has only 113 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "GRADINA_U",
+      "traffic_level": "likely_light",
+      "count": 93,
+      "needed": 125,
+      "message": "GRADINA_U has only 93 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "HORGOS_U",
+      "traffic_level": "likely_empty",
+      "count": 82,
+      "needed": 125,
+      "message": "HORGOS_U has only 82 likely_empty images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "HORGOS_U",
+      "traffic_level": "likely_heavy",
+      "count": 94,
+      "needed": 125,
+      "message": "HORGOS_U has only 94 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "JABUKA_U",
+      "traffic_level": "likely_light",
+      "count": 98,
+      "needed": 125,
+      "message": "JABUKA_U has only 98 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "KELEBIJA_U",
+      "traffic_level": "likely_light",
+      "count": 116,
+      "needed": 125,
+      "message": "KELEBIJA_U has only 116 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "MZVORNIK_U",
+      "traffic_level": "likely_moderate",
+      "count": 113,
+      "needed": 125,
+      "message": "MZVORNIK_U has only 113 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "PRESEVO_I",
+      "traffic_level": "likely_light",
+      "count": 87,
+      "needed": 125,
+      "message": "PRESEVO_I has only 87 likely_light images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "PRESEVO_I",
+      "traffic_level": "likely_moderate",
+      "count": 121,
+      "needed": 125,
+      "message": "PRESEVO_I has only 121 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "PRESEVO_U",
+      "traffic_level": "likely_empty",
+      "count": 90,
+      "needed": 125,
+      "message": "PRESEVO_U has only 90 likely_empty images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "RACA_I",
+      "traffic_level": "likely_heavy",
+      "count": 75,
+      "needed": 125,
+      "message": "RACA_I has only 75 likely_heavy images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "SPILJANI_U",
+      "traffic_level": "likely_moderate",
+      "count": 74,
+      "needed": 125,
+      "message": "SPILJANI_U has only 74 likely_moderate images (need 125)"
+    },
+    {
+      "type": "insufficient_samples",
+      "severity": "warning",
+      "camera": "VATIN_I",
+      "traffic_level": "likely_light",
+      "count": 111,
+      "needed": 125,
+      "message": "VATIN_I has only 111 likely_light images (need 125)"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "BATROVCI_I",
+      "traffic_level": "likely_empty",
+      "percentage": 62.28571428571429,
+      "message": "BATROVCI_I is 62.3% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "DJALA_I",
+      "traffic_level": "likely_empty",
+      "percentage": 91.28571428571428,
+      "message": "DJALA_I is 91.3% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "DJALA_U",
+      "traffic_level": "likely_empty",
+      "percentage": 89.57142857142857,
+      "message": "DJALA_U is 89.6% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "GOSTUN_I",
+      "traffic_level": "likely_empty",
+      "percentage": 72.57142857142857,
+      "message": "GOSTUN_I is 72.6% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "GOSTUN_U",
+      "traffic_level": "likely_empty",
+      "percentage": 72.85714285714285,
+      "message": "GOSTUN_U is 72.9% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "JABUKA_I",
+      "traffic_level": "likely_empty",
+      "percentage": 87.14285714285714,
+      "message": "JABUKA_I is 87.1% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "JABUKA_U",
+      "traffic_level": "likely_empty",
+      "percentage": 81.57142857142857,
+      "message": "JABUKA_U is 81.6% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "KELEBIJA_U",
+      "traffic_level": "likely_empty",
+      "percentage": 76.57142857142857,
+      "message": "KELEBIJA_U is 76.6% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "KOTROMAN_I",
+      "traffic_level": "likely_empty",
+      "percentage": 74.28571428571429,
+      "message": "KOTROMAN_I is 74.3% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "KOTROMAN_U",
+      "traffic_level": "likely_empty",
+      "percentage": 93.85714285714286,
+      "message": "KOTROMAN_U is 93.9% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "SID_I",
+      "traffic_level": "likely_empty",
+      "percentage": 75.93123209169055,
+      "message": "SID_I is 75.9% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "SPILJANI_U",
+      "traffic_level": "likely_empty",
+      "percentage": 66.71428571428571,
+      "message": "SPILJANI_U is 66.7% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "TRBUSNICA_U",
+      "traffic_level": "likely_empty",
+      "percentage": 66.42857142857143,
+      "message": "TRBUSNICA_U is 66.4% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "VATIN_I",
+      "traffic_level": "likely_moderate",
+      "percentage": 79.57142857142857,
+      "message": "VATIN_I is 79.6% likely_moderate"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "VATIN_U",
+      "traffic_level": "likely_empty",
+      "percentage": 75.57142857142857,
+      "message": "VATIN_U is 75.6% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "VRSKA-CUKA_I",
+      "traffic_level": "likely_empty",
+      "percentage": 75.42857142857143,
+      "message": "VRSKA-CUKA_I is 75.4% likely_empty"
+    },
+    {
+      "type": "imbalanced_distribution",
+      "severity": "info",
+      "camera": "VRSKA-CUKA_U",
+      "traffic_level": "likely_empty",
+      "percentage": 98.28571428571429,
+      "message": "VRSKA-CUKA_U is 98.3% likely_empty"
+    }
+  ],
+  "summary": {
+    "total_issues": 80,
+    "critical_issues": 42,
+    "warning_issues": 21,
+    "info_issues": 17
+  }
+}

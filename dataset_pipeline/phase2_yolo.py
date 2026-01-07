@@ -3,9 +3,17 @@ Phase 2: YOLO Analysis
 
 Runs YOLO vehicle detection on all downloaded images to count vehicles
 and assign preliminary traffic density labels.
+
+Automatic Polygon Filtering:
+- If lane_polygons.json exists, automatically filters detections to only
+  count vehicles inside lane polygons (excludes parked cars outside lanes)
+- Uses active lane detection to normalize vehicle count by lanes in use
+- Falls back to basic vehicle counting if no lane polygons
 """
 
 import logging
+import cv2
+import numpy as np
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
@@ -63,6 +71,11 @@ class YOLOAnalysisPhase(PipelinePhase):
 
         self.model = None
 
+        # Polygon filtering (optional - loaded if lane_polygons.json exists)
+        self.lane_polygons_path = self.config.base_dir / "lane_polygons.json"
+        self.use_polygon_filtering = False
+        self.lane_lookup = {}
+
     def _detect_device(self) -> str:
         """
         Auto-detect best available device for YOLO inference.
@@ -119,9 +132,50 @@ class YOLOAnalysisPhase(PipelinePhase):
         except Exception as e:
             raise Exception(f"Failed to load YOLO model: {e}")
 
+    def load_lane_polygons(self):
+        """
+        Load lane polygons if available for polygon filtering.
+
+        Returns:
+            True if polygons loaded, False otherwise
+        """
+        if not self.lane_polygons_path.exists():
+            self.logger.info("No lane polygons found - using basic vehicle counting")
+            self.use_polygon_filtering = False
+            return False
+
+        try:
+            self.logger.info(f"Loading lane polygons from {self.lane_polygons_path}")
+            lane_config = load_json(self.lane_polygons_path)
+
+            # Build lookup: camera_id -> (polygon, lane_count)
+            self.lane_lookup = {}
+            for camera_id, camera_data in lane_config.get('cameras', {}).items():
+                polygons = camera_data.get('polygons', [])
+                lane_count = camera_data.get('lane_count', 2)
+
+                if polygons:
+                    polygon = np.array(polygons[0]['polygon'], dtype=np.float32)
+                    self.lane_lookup[camera_id] = {
+                        'polygon': polygon,
+                        'lane_count': lane_count
+                    }
+
+            self.logger.info(
+                f"Loaded {len(self.lane_lookup)} lane polygons - using polygon filtering"
+            )
+            self.use_polygon_filtering = True
+            return True
+
+        except Exception as e:
+            self.logger.warning(f"Failed to load lane polygons: {e}")
+            self.use_polygon_filtering = False
+            return False
+
     def analyze_image(
         self,
         image_path: Path,
+        camera_id: str = None,
         verbose: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
@@ -129,6 +183,7 @@ class YOLOAnalysisPhase(PipelinePhase):
 
         Args:
             image_path: Path to image file
+            camera_id: Camera ID for polygon filtering (optional)
             verbose: Whether to show YOLO output
 
         Returns:
@@ -156,9 +211,6 @@ class YOLOAnalysisPhase(PipelinePhase):
             detections = results[0]
             boxes = detections.boxes
 
-            # Count vehicles
-            vehicle_count = len(boxes)
-
             # Extract bounding box details
             box_data = []
             for box in boxes:
@@ -168,14 +220,39 @@ class YOLOAnalysisPhase(PipelinePhase):
                     "class": int(box.cls[0].cpu())
                 })
 
-            # Categorize traffic level
-            traffic_level = categorize_traffic(vehicle_count)
+            # Apply polygon filtering if available
+            if self.use_polygon_filtering and camera_id and camera_id in self.lane_lookup:
+                polygon_data = self.lane_lookup[camera_id]
+                polygon = polygon_data['polygon']
+                total_lanes = polygon_data['lane_count']
 
-            return {
-                "vehicle_count": vehicle_count,
-                "traffic_level": traffic_level,
-                "boxes": box_data
-            }
+                # Filter boxes inside polygon
+                filtered_boxes = self._filter_boxes_by_polygon(box_data, polygon)
+                vehicle_count = len(filtered_boxes)
+
+                # Detect active lanes and classify traffic
+                active_lanes = self._detect_active_lanes(filtered_boxes, polygon, total_lanes)
+                traffic_level = self._classify_traffic_lane_aware(vehicle_count, active_lanes)
+
+                return {
+                    "vehicle_count": vehicle_count,
+                    "vehicle_count_total": len(box_data),  # Before filtering
+                    "filtered_count": len(box_data) - vehicle_count,  # Removed by polygon
+                    "traffic_level": traffic_level,
+                    "lane_count": total_lanes,
+                    "active_lanes": active_lanes,
+                    "boxes": filtered_boxes
+                }
+            else:
+                # Basic vehicle counting (no polygon filtering)
+                vehicle_count = len(box_data)
+                traffic_level = categorize_traffic(vehicle_count)
+
+                return {
+                    "vehicle_count": vehicle_count,
+                    "traffic_level": traffic_level,
+                    "boxes": box_data
+                }
 
         except Exception as e:
             self.logger.error(f"Error analyzing {image_path}: {e}")
@@ -230,6 +307,9 @@ class YOLOAnalysisPhase(PipelinePhase):
         # Load YOLO model
         self.load_model()
 
+        # Load lane polygons if available
+        self.load_lane_polygons()
+
         # Track which images have been analyzed (for resume)
         analyzed_paths = set()
         if existing_results:
@@ -242,6 +322,8 @@ class YOLOAnalysisPhase(PipelinePhase):
             "device": self.device,
             "confidence_threshold": self.confidence_threshold,
             "vehicle_classes": self.vehicle_classes,
+            "polygon_filtering": self.use_polygon_filtering,
+            "lane_aware_classification": self.use_polygon_filtering,
             "created_at": datetime.now().isoformat(),
             "analyses": existing_results.get("analyses", []) if existing_results else []
         }
@@ -277,6 +359,7 @@ class YOLOAnalysisPhase(PipelinePhase):
 
             for idx, sample in enumerate(samples):
                 local_path = sample["local_path"]
+                camera_id = sample.get("camera_id")
 
                 # Skip if already analyzed (resume mode)
                 if resume and local_path in analyzed_paths:
@@ -286,8 +369,12 @@ class YOLOAnalysisPhase(PipelinePhase):
                 # Construct full image path
                 image_path = self.config.base_dir / local_path
 
-                # Analyze image
-                analysis_result = self.analyze_image(image_path, verbose=False)
+                # Analyze image (with camera_id for polygon filtering)
+                analysis_result = self.analyze_image(
+                    image_path,
+                    camera_id=camera_id,
+                    verbose=False
+                )
 
                 if analysis_result:
                     # Add metadata to result
@@ -393,6 +480,142 @@ class YOLOAnalysisPhase(PipelinePhase):
         self.logger.info(f"Traffic level distribution: {by_level}")
 
         return True
+
+    def _filter_boxes_by_polygon(
+        self,
+        boxes: List[Dict[str, Any]],
+        polygon: np.ndarray
+    ) -> List[Dict[str, Any]]:
+        """
+        Filter YOLO boxes to only keep vehicles inside polygon.
+
+        Args:
+            boxes: List of YOLO bounding boxes
+            polygon: Polygon vertices (N, 2)
+
+        Returns:
+            Filtered list of boxes
+        """
+        filtered = []
+        polygon_cv = polygon.reshape(-1, 1, 2).astype(np.float32)
+
+        for box in boxes:
+            xyxy = box['xyxy']
+
+            # Calculate center point
+            cx = (xyxy[0] + xyxy[2]) / 2
+            cy = (xyxy[1] + xyxy[3]) / 2
+
+            # Check if inside polygon
+            result = cv2.pointPolygonTest(polygon_cv, (float(cx), float(cy)), False)
+
+            if result >= 0:  # Inside or on boundary
+                filtered.append(box)
+
+        return filtered
+
+    def _detect_active_lanes(
+        self,
+        boxes: List[Dict[str, Any]],
+        polygon: np.ndarray,
+        total_lanes: int
+    ) -> int:
+        """
+        Detect how many lanes are actually active based on vehicle distribution.
+
+        Uses X-coordinate clustering to determine which lanes have vehicles.
+        This prevents over-normalization when only some lanes are open at a
+        border crossing with many total lanes.
+
+        Args:
+            boxes: List of filtered bounding boxes (vehicles inside polygon)
+            polygon: Polygon vertices (N, 2) defining the lane area
+            total_lanes: Total number of lanes at this crossing
+
+        Returns:
+            Number of lanes with at least one vehicle (active lanes)
+        """
+        # Skip clustering for small border crossings (<=2 lanes)
+        if total_lanes <= 2:
+            return total_lanes
+
+        # If no vehicles, return total lanes (avoids division by zero later)
+        if not boxes:
+            return total_lanes
+
+        # Calculate polygon width (min/max x coordinates)
+        x_coords = polygon[:, 0]
+        polygon_min_x = float(np.min(x_coords))
+        polygon_width = float(np.max(x_coords) - polygon_min_x)
+
+        # Avoid division by zero if polygon is degenerate
+        if polygon_width == 0:
+            return total_lanes
+
+        # Create bins for each lane
+        lane_bins = [0] * total_lanes
+
+        # Assign each vehicle to a lane bin based on its center X coordinate
+        for box in boxes:
+            xyxy = box['xyxy']
+
+            # Calculate center point
+            cx = (xyxy[0] + xyxy[2]) / 2
+
+            # Normalize x to polygon-relative coordinate (0 to 1)
+            normalized_x = (cx - polygon_min_x) / polygon_width
+
+            # Clamp to [0, 1] range (handle edge cases)
+            normalized_x = max(0.0, min(1.0, normalized_x))
+
+            # Assign to lane bin
+            lane_idx = min(int(normalized_x * total_lanes), total_lanes - 1)
+            lane_bins[lane_idx] += 1
+
+        # Count bins with at least one vehicle
+        active_lanes = sum(1 for count in lane_bins if count > 0)
+
+        # Sanity check: should have at least 1 active lane if we have vehicles
+        if active_lanes < 1:
+            active_lanes = total_lanes
+
+        return active_lanes
+
+    def _classify_traffic_lane_aware(
+        self,
+        vehicle_count: int,
+        active_lanes: int
+    ) -> str:
+        """
+        Classify traffic level using lane-aware thresholds.
+
+        Formula:
+        - vehicles_per_lane = vehicle_count / active_lanes
+        - empty: < 1 vehicle per lane
+        - light: 1-2.5 vehicles per lane
+        - moderate: 2.5-5 vehicles per lane
+        - heavy: >= 5 vehicles per lane
+
+        Args:
+            vehicle_count: Number of vehicles detected (inside polygon)
+            active_lanes: Number of lanes with vehicles (detected by clustering)
+
+        Returns:
+            Traffic level string with "likely_" prefix
+        """
+        if active_lanes == 0:
+            active_lanes = 1  # Avoid division by zero
+
+        vehicles_per_lane = vehicle_count / active_lanes
+
+        if vehicles_per_lane < 1.0:
+            return "likely_empty"
+        elif vehicles_per_lane < 2.5:
+            return "likely_light"
+        elif vehicles_per_lane < 5.0:
+            return "likely_moderate"
+        else:
+            return "likely_heavy"
 
 
 def main():

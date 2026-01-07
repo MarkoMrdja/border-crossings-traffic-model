@@ -1,0 +1,456 @@
+{
+  "created_at": "2026-01-05T00:42:06.998634",
+  "purpose": "Test lane polygons in extreme traffic conditions",
+  "total_images": 64,
+  "total_cameras": 32,
+  "cameras": {
+    "BATROVCI_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/BATROVCI_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/BATROVCI_I/2025-12-29_04-39-35.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/BATROVCI_I_HEAVY.jpg",
+        "vehicle_count": 26,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/BATROVCI_I/2025-08-27_10-59-10.jpg"
+      }
+    },
+    "BATROVCI_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/BATROVCI_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/BATROVCI_U/2026-01-02_03-54-58.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/BATROVCI_U_HEAVY.jpg",
+        "vehicle_count": 36,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/BATROVCI_U/2024-08-02_09-56-36.jpg"
+      }
+    },
+    "DJALA_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/DJALA_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/DJALA_I/2024-12-03_03-40-43.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/DJALA_I_HEAVY.jpg",
+        "vehicle_count": 13,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/DJALA_I/2024-07-13_18-01-34.jpg"
+      }
+    },
+    "DJALA_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/DJALA_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/DJALA_U/2025-02-28_02-23-00.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/DJALA_U_HEAVY.jpg",
+        "vehicle_count": 17,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/DJALA_U/2024-08-19_18-06-33.jpg"
+      }
+    },
+    "GOSTUN_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/GOSTUN_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/GOSTUN_I/2024-12-05_23-59-32.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/GOSTUN_I_HEAVY.jpg",
+        "vehicle_count": 23,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/GOSTUN_I/2025-08-24_09-04-12.jpg"
+      }
+    },
+    "GOSTUN_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/GOSTUN_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/GOSTUN_U/2025-02-16_23-04-13.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/GOSTUN_U_HEAVY.jpg",
+        "vehicle_count": 26,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/GOSTUN_U/2023-12-30_13-25-26.jpg"
+      }
+    },
+    "GRADINA_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/GRADINA_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/GRADINA_I/2024-12-03_23-37-24.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/GRADINA_I_HEAVY.jpg",
+        "vehicle_count": 30,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/GRADINA_I/2024-07-27_16-48-49.jpg"
+      }
+    },
+    "GRADINA_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/GRADINA_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/GRADINA_U/2025-12-26_23-54-41.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/GRADINA_U_HEAVY.jpg",
+        "vehicle_count": 26,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/GRADINA_U/2025-09-03_18-14-40.jpg"
+      }
+    },
+    "HORGOS_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/HORGOS_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/HORGOS_I/2025-01-31_02-29-54.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/HORGOS_I_HEAVY.jpg",
+        "vehicle_count": 30,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/HORGOS_I/2024-08-11_12-00-20.jpg"
+      }
+    },
+    "HORGOS_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/HORGOS_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/HORGOS_U/2025-02-11_05-58-11.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/HORGOS_U_HEAVY.jpg",
+        "vehicle_count": 34,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/HORGOS_U/2024-07-15_04-45-04.jpg"
+      }
+    },
+    "JABUKA_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/JABUKA_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/JABUKA_I/2025-02-03_00-28-30.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/JABUKA_I_HEAVY.jpg",
+        "vehicle_count": 18,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/JABUKA_I/2024-08-02_11-51-42.jpg"
+      }
+    },
+    "JABUKA_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/JABUKA_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/JABUKA_U/2025-02-13_01-46-20.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/JABUKA_U_HEAVY.jpg",
+        "vehicle_count": 15,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/JABUKA_U/2025-09-08_15-24-26.jpg"
+      }
+    },
+    "KELEBIJA_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/KELEBIJA_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/KELEBIJA_I/2025-01-28_23-11-48.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/KELEBIJA_I_HEAVY.jpg",
+        "vehicle_count": 20,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/KELEBIJA_I/2025-08-28_15-31-36.jpg"
+      }
+    },
+    "KELEBIJA_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/KELEBIJA_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/KELEBIJA_U/2024-02-10_04-35-49.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/KELEBIJA_U_HEAVY.jpg",
+        "vehicle_count": 21,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/KELEBIJA_U/2025-12-21_09-43-57.jpg"
+      }
+    },
+    "KOTROMAN_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/KOTROMAN_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/KOTROMAN_I/2024-12-22_02-03-11.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/KOTROMAN_I_HEAVY.jpg",
+        "vehicle_count": 14,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/KOTROMAN_I/2024-09-22_17-30-35.jpg"
+      }
+    },
+    "KOTROMAN_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/KOTROMAN_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/KOTROMAN_U/2025-12-25_00-28-58.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/KOTROMAN_U_HEAVY.jpg",
+        "vehicle_count": 14,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/KOTROMAN_U/2024-06-07_14-53-25.jpg"
+      }
+    },
+    "MZVORNIK_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/MZVORNIK_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/MZVORNIK_I/2024-12-01_03-59-47.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/MZVORNIK_I_HEAVY.jpg",
+        "vehicle_count": 15,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/MZVORNIK_I/2025-12-18_14-00-10.jpg"
+      }
+    },
+    "MZVORNIK_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/MZVORNIK_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/MZVORNIK_U/2025-02-06_00-59-33.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/MZVORNIK_U_HEAVY.jpg",
+        "vehicle_count": 16,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/MZVORNIK_U/2025-08-24_14-44-52.jpg"
+      }
+    },
+    "PRESEVO_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/PRESEVO_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/PRESEVO_I/2025-01-30_04-19-18.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/PRESEVO_I_HEAVY.jpg",
+        "vehicle_count": 36,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/PRESEVO_I/2024-10-13_17-24-16.jpg"
+      }
+    },
+    "PRESEVO_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/PRESEVO_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/PRESEVO_U/2026-01-01_03-34-15.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/PRESEVO_U_HEAVY.jpg",
+        "vehicle_count": 39,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/PRESEVO_U/2025-08-31_18-45-40.jpg"
+      }
+    },
+    "RACA_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/RACA_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/RACA_I/2025-02-16_22-01-19.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/RACA_I_HEAVY.jpg",
+        "vehicle_count": 27,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/RACA_I/2024-06-03_13-07-12.jpg"
+      }
+    },
+    "RACA_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/RACA_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/RACA_U/2025-02-05_02-32-56.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/RACA_U_HEAVY.jpg",
+        "vehicle_count": 26,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/RACA_U/2024-10-13_16-14-51.jpg"
+      }
+    },
+    "SID_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/SID_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/SID_I/2024-12-02_05-55-02.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/SID_I_HEAVY.jpg",
+        "vehicle_count": 13,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/SID_I/2024-08-15_19-39-27.jpg"
+      }
+    },
+    "SID_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/SID_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/SID_U/2025-02-10_02-15-22.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/SID_U_HEAVY.jpg",
+        "vehicle_count": 21,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/SID_U/2025-08-24_15-14-37.jpg"
+      }
+    },
+    "SPILJANI_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/SPILJANI_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/SPILJANI_I/2024-01-12_04-46-40.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/SPILJANI_I_HEAVY.jpg",
+        "vehicle_count": 24,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/SPILJANI_I/2024-07-30_12-04-34.jpg"
+      }
+    },
+    "SPILJANI_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/SPILJANI_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/SPILJANI_U/2025-02-18_04-56-33.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/SPILJANI_U_HEAVY.jpg",
+        "vehicle_count": 19,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/SPILJANI_U/2025-08-25_18-14-43.jpg"
+      }
+    },
+    "TRBUSNICA_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/TRBUSNICA_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/TRBUSNICA_I/2025-02-24_22-40-39.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/TRBUSNICA_I_HEAVY.jpg",
+        "vehicle_count": 19,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/TRBUSNICA_I/2025-05-06_11-53-37.jpg"
+      }
+    },
+    "TRBUSNICA_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/TRBUSNICA_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/TRBUSNICA_U/2024-12-17_04-15-43.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/TRBUSNICA_U_HEAVY.jpg",
+        "vehicle_count": 15,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/TRBUSNICA_U/2024-08-17_11-32-03.jpg"
+      }
+    },
+    "VATIN_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/VATIN_I_EMPTY.jpg",
+        "vehicle_count": 1,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/VATIN_I/2024-06-07_10-49-06.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/VATIN_I_HEAVY.jpg",
+        "vehicle_count": 20,
+        "traffic_level": "likely_heavy",
+        "original_path": "raw/VATIN_I/2025-09-06_12-27-14.jpg"
+      }
+    },
+    "VATIN_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/VATIN_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/VATIN_U/2024-01-06_23-51-18.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/VATIN_U_HEAVY.jpg",
+        "vehicle_count": 12,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/VATIN_U/2025-03-08_12-46-59.jpg"
+      }
+    },
+    "VRSKA-CUKA_I": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/VRSKA-CUKA_I_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/VRSKA-CUKA_I/2025-01-30_23-15-39.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/VRSKA-CUKA_I_HEAVY.jpg",
+        "vehicle_count": 10,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/VRSKA-CUKA_I/2024-07-28_13-56-26.jpg"
+      }
+    },
+    "VRSKA-CUKA_U": {
+      "emptiest": {
+        "local_path": "mini_test_dataset/VRSKA-CUKA_U_EMPTY.jpg",
+        "vehicle_count": 0,
+        "traffic_level": "likely_empty",
+        "original_path": "raw/VRSKA-CUKA_U/2025-12-18_01-54-37.jpg"
+      },
+      "heaviest": {
+        "local_path": "mini_test_dataset/VRSKA-CUKA_U_HEAVY.jpg",
+        "vehicle_count": 7,
+        "traffic_level": "likely_moderate",
+        "original_path": "raw/VRSKA-CUKA_U/2024-06-08_19-26-40.jpg"
+      }
+    }
+  }
+}

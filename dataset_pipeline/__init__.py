@@ -11,11 +11,11 @@ from .phase1_discover import StructureDiscoveryPhase
 from .phase1_sample import StratifiedSamplingPhase
 from .phase1_download import ParallelDownloadPhase
 from .phase2_yolo import YOLOAnalysisPhase
-from .phase2_review import LabelReviewTool
-from .phase3_balance import BalancedSelectionPhase
-from .phase4_roi_tool import ROIDefinitionTool
-from .phase5_crop import CropPhase
-from .phase6_label_tool import LabelingTool
+from .phase2a_lane_annotation import LaneAnnotationTool
+from .phase3_selection import SelectionPhase
+from .phase4_review import ReviewTool
+from .phase5_exclusion_zones import ExclusionZonesTool
+from .phase6_crop import CropPhase
 from .phase7_split import TrainValSplitPhase
 
 # Import verification tools
@@ -26,11 +26,11 @@ __all__ = [
     "StratifiedSamplingPhase",
     "ParallelDownloadPhase",
     "YOLOAnalysisPhase",
-    "LabelReviewTool",
-    "BalancedSelectionPhase",
-    "ROIDefinitionTool",
+    "LaneAnnotationTool",
+    "SelectionPhase",
+    "ReviewTool",
+    "ExclusionZonesTool",
     "CropPhase",
-    "LabelingTool",
     "TrainValSplitPhase",
     "YOLOVerification",
 ]

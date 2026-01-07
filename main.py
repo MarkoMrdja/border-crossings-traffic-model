@@ -22,11 +22,11 @@ from dataset_pipeline import (
     StratifiedSamplingPhase,
     ParallelDownloadPhase,
     YOLOAnalysisPhase,
-    LabelReviewTool,
-    BalancedSelectionPhase,
-    ROIDefinitionTool,
+    LaneAnnotationTool,
+    SelectionPhase,
+    ReviewTool,
+    ExclusionZonesTool,
     CropPhase,
-    LabelingTool,
     TrainValSplitPhase,
 )
 
@@ -44,7 +44,7 @@ class PhaseMetadata:
     class_name: str          # "StructureDiscoveryPhase"
     output_files: List[str]  # Required output files (relative to base_dir)
     dependencies: List[str]  # Phase numbers this depends on
-    is_interactive: bool     # True for phases 4, 6
+    is_interactive: bool     # True for phases 2a, 4, 5 (lane annotation, review, exclusion zones)
     estimated_time: str      # "5-15 minutes"
     requires_azure: bool     # True for phases 1a, 1c
     init_kwargs: List[str]   # Constructor parameter names
@@ -93,7 +93,7 @@ PHASE_REGISTRY = {
     "2": PhaseMetadata(
         number="2",
         name="YOLO Analysis",
-        description="Run YOLO vehicle detection",
+        description="Run YOLO with automatic polygon filtering (if lane_polygons.json exists)",
         class_name="YOLOAnalysisPhase",
         output_files=["yolo_results.json"],
         dependencies=["1c"],
@@ -103,83 +103,90 @@ PHASE_REGISTRY = {
         init_kwargs=["pipeline_config"],
         runtime_kwargs=["device", "model", "confidence"]
     ),
-    "2b": PhaseMetadata(
-        number="2b",
-        name="Label Review & Correction",
-        description="Review and correct YOLO auto-labels (OPTIONAL)",
-        class_name="LabelReviewTool",
-        output_files=["yolo_results.json (modified)"],
+    "2a": PhaseMetadata(
+        number="2a",
+        name="Lane Annotation",
+        description="Interactive lane polygon annotation (skip if lane_polygons.json exists)",
+        class_name="LaneAnnotationTool",
+        output_files=["lane_polygons.json"],
         dependencies=["2"],
         is_interactive=True,
-        estimated_time="2-3 hours for borderline cases",
+        estimated_time="2-3 hours (~3-5 min per camera)",
         requires_azure=False,
         init_kwargs=["pipeline_config"],
-        runtime_kwargs=["borderline_only", "specific_ranges"]
+        runtime_kwargs=["resume"]
     ),
     "3": PhaseMetadata(
         number="3",
-        name="Traffic-Balanced Selection",
-        description="Select 500 balanced images per camera",
-        class_name="BalancedSelectionPhase",
-        output_files=["balanced_selection.json", "roi_references.json"],
-        dependencies=["2"],
+        name="Binary Selection",
+        description="Select 6K balanced images (3K traffic_present, 3K traffic_absent)",
+        class_name="SelectionPhase",
+        output_files=["binary_selection.json"],
+        dependencies=["2a"],
         is_interactive=False,
         estimated_time="1-2 minutes",
         requires_azure=False,
-        init_kwargs=["pipeline_config"]
+        init_kwargs=["pipeline_config"],
+        runtime_kwargs=["target_per_class"]
     ),
     "4": PhaseMetadata(
         number="4",
-        name="ROI Definition Tool",
-        description="Interactive ROI polygon definition",
-        class_name="ROIDefinitionTool",
-        output_files=["roi_config.json"],
+        name="Label Review",
+        description="Manual review and correction of binary labels",
+        class_name="ReviewTool",
+        output_files=["binary_labeled/", "binary_review_log.json"],
         dependencies=["3"],
         is_interactive=True,
-        estimated_time="2-3 hours",
+        estimated_time="4-6 hours (all) or 1 hour (borderline only)",
         requires_azure=False,
-        init_kwargs=["pipeline_config"]
+        init_kwargs=["pipeline_config"],
+        runtime_kwargs=["review_all", "resume"]
     ),
     "5": PhaseMetadata(
         number="5",
-        name="Batch Cropping",
-        description="Crop 64x64 ROI regions",
-        class_name="CropPhase",
-        output_files=["crops/"],
+        name="Exclusion Zones",
+        description="Mark YOLO failure regions (one polygon per camera)",
+        class_name="ExclusionZonesTool",
+        output_files=["yolo_failure_regions.json"],
         dependencies=["4"],
-        is_interactive=False,
-        estimated_time="5-10 minutes",
+        is_interactive=True,
+        estimated_time="2-3 hours (~3-5 min per camera)",
         requires_azure=False,
-        init_kwargs=["pipeline_config"]
+        init_kwargs=["pipeline_config"],
+        runtime_kwargs=["resume"]
     ),
     "6": PhaseMetadata(
         number="6",
-        name="Labeling Tool",
-        description="Interactive label verification",
-        class_name="LabelingTool",
-        output_files=["labeling_progress.json", "labeled/"],
+        name="Crop Failure Regions",
+        description="Crop regions with label inheritance (128×128)",
+        class_name="CropPhase",
+        output_files=["binary_crops/", "binary_crop_metadata.json"],
         dependencies=["5"],
-        is_interactive=True,
-        estimated_time="2-3 hours",
+        is_interactive=False,
+        estimated_time="15-20 minutes",
         requires_azure=False,
-        init_kwargs=["pipeline_config"]
+        init_kwargs=["pipeline_config"],
+        runtime_kwargs=["resume"]
     ),
     "7": PhaseMetadata(
         number="7",
         name="Train/Val Split",
-        description="Create 80/20 train/validation split",
+        description="Create 80/20 stratified train/val split",
         class_name="TrainValSplitPhase",
-        output_files=["split_manifest.json", "final/train/", "final/val/"],
+        output_files=["binary_split_summary.json", "binary_final/train/", "binary_final/val/"],
         dependencies=["6"],
         is_interactive=False,
-        estimated_time="30-60 seconds",
+        estimated_time="1-2 minutes",
         requires_azure=False,
-        init_kwargs=["pipeline_config"]
+        init_kwargs=["pipeline_config"],
+        runtime_kwargs=["train_ratio"]
     )
 }
 
 # Ordered list of phases for sequential execution
-PHASE_ORDER = ["1a", "1b", "1c", "2", "2b", "3", "4", "5", "6", "7"]
+# Binary classification workflow: 1a -> 1b -> 1c -> 2 -> 2a -> 3 -> 4 -> 5 -> 6 -> 7
+# Phase 2a (lane annotation) is optional if lane_polygons.json already exists
+PHASE_ORDER = ["1a", "1b", "1c", "2", "2a", "3", "4", "5", "6", "7"]
 
 
 # ============================================================================
@@ -381,6 +388,18 @@ class PhaseOrchestrator:
                 print("  - R: Reset current polygon")
                 print("  - S: Skip camera")
                 print("  - Q: Save progress and quit\n")
+            elif phase_num == "4-binary":
+                print("Controls:")
+                print("  - 1: Label as traffic_present (moderate/heavy congestion)")
+                print("  - 2: Label as traffic_absent (empty/light traffic)")
+                print("  - Enter: Accept current label (if confident)")
+                print("  - U: Mark as uncertain (exclude from dataset)")
+                print("  - N: Next image")
+                print("  - P: Previous image")
+                print("  - Q: Quit and save progress\n")
+                print("Review strategy:")
+                print("  - Use --borderline-only to review only borderline cases (~1,300 images, 1 hour)")
+                print("  - Or review all 6,000 images for highest quality (4-6 hours)\n")
             elif phase_num == "6":
                 print("Controls:")
                 print("  - Enter: Confirm predicted label")

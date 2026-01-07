@@ -81,6 +81,11 @@ class PipelineConfig:
     labeled_dir: str = "labeled"
     final_dir: str = "final"
 
+    # Binary classification directories
+    binary_crops_dir: str = "binary_crops"
+    binary_labeled_dir: str = "binary_labeled"
+    binary_final_dir: str = "binary_final"
+
     def __post_init__(self):
         """Convert string paths to Path objects and ensure base_dir is absolute."""
         self.base_dir = Path(self.base_dir).resolve()
@@ -94,21 +99,23 @@ class PipelineConfig:
         # Create base directory
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create subdirectories
+        # Create raw directory for downloaded images
         (self.base_dir / self.raw_dir).mkdir(exist_ok=True)
 
-        # Crops directories (by predicted traffic level)
-        for level in TRAFFIC_LEVELS:
-            (self.base_dir / self.crops_dir / f"likely_{level}").mkdir(parents=True, exist_ok=True)
+        # Binary classification directories
+        for label in BINARY_CLASSIFICATION["classes"]:
+            # Binary crops
+            (self.base_dir / self.binary_crops_dir / label).mkdir(parents=True, exist_ok=True)
+            # Binary labeled (including uncertain)
+            (self.base_dir / self.binary_labeled_dir / label).mkdir(parents=True, exist_ok=True)
 
-        # Labeled directories (by verified traffic level)
-        for level in TRAFFIC_LEVELS:
-            (self.base_dir / self.labeled_dir / level).mkdir(parents=True, exist_ok=True)
+        # Add uncertain directory for binary labeled
+        (self.base_dir / self.binary_labeled_dir / "uncertain").mkdir(parents=True, exist_ok=True)
 
-        # Final directories (train/val split)
+        # Binary final directories (train/val split)
         for split in ["train", "val"]:
-            for level in TRAFFIC_LEVELS:
-                (self.base_dir / self.final_dir / split / level).mkdir(parents=True, exist_ok=True)
+            for label in BINARY_CLASSIFICATION["classes"]:
+                (self.base_dir / self.binary_final_dir / split / label).mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================================
@@ -133,6 +140,31 @@ TRAFFIC_THRESHOLDS = {
 
 # Traffic levels (ordered for processing)
 TRAFFIC_LEVELS = ["empty", "light", "moderate", "heavy"]
+
+# Binary Classification Configuration
+BINARY_CLASSIFICATION = {
+    "enabled": True,
+    "crop_size": 128,  # Changed from 64 to 128 for better detail in distant regions
+    "classes": ["traffic_absent", "traffic_present"],
+    "auto_label_confidence_threshold": 0.70,
+    "review_sample_size": 2500  # Number of crops to manually review (if needed)
+}
+
+# Binary Labeling Rules
+BINARY_LABELING_RULES = {
+    "traffic_absent": {
+        "max_yolo_count": 6,  # Empty/light traffic (0-6 vehicles)
+        "confidence": 0.90
+    },
+    "traffic_present": {
+        "min_yolo_count": 7,  # Moderate/heavy traffic (7+ vehicles)
+        "confidence": 0.75
+    },
+    "borderline": {
+        "yolo_range": (4, 8),  # 4-8 vehicles = low confidence, flag for review
+        "confidence": 0.60
+    }
+}
 
 # Time Buckets (hour ranges and target samples per camera)
 TIME_BUCKETS = {

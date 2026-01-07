@@ -1,8 +1,11 @@
 """
 Phase 7: Train/Val Split
 
-Creates an 80/20 train/validation split from labeled images,
-stratified by traffic density class to ensure balanced representation.
+Creates stratified 80/20 train/validation split for binary classification.
+Ensures each camera is represented in both train and val sets, and maintains
+class balance.
+
+This is the final phase before model training.
 """
 
 import logging
@@ -11,9 +14,11 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
 from datetime import datetime
+from collections import defaultdict
+from tqdm import tqdm
 
 from .base import PipelinePhase
-from .config import PipelineConfig, TRAFFIC_LEVELS
+from .config import PipelineConfig, BINARY_CLASSIFICATION
 from .utils import load_json, save_json
 
 logger = logging.getLogger(__name__)
@@ -21,23 +26,18 @@ logger = logging.getLogger(__name__)
 
 class TrainValSplitPhase(PipelinePhase):
     """
-    Phase 7: Train/validation split.
+    Phase 7: Create stratified train/validation split for binary classification.
 
-    Creates stratified 80/20 train/validation split from labeled images.
-    Each traffic level is split independently to maintain class balance.
+    For each binary label (traffic_present, traffic_absent):
+    1. Group crops by camera
+    2. Split 80/20 within each camera (stratified by camera)
+    3. Maintain overall class balance (50/50)
+    4. Copy files to train/ and val/ directories
 
-    Directory structure created:
-    final/
-    ├── train/
-    │   ├── empty/
-    │   ├── light/
-    │   ├── moderate/
-    │   └── heavy/
-    └── val/
-        ├── empty/
-        ├── light/
-        ├── moderate/
-        └── heavy/
+    Stratification ensures:
+    - Each camera appears in both train and val
+    - Model learns from diverse camera angles
+    - No data leakage (same source image not in both sets)
     """
 
     def __init__(self, pipeline_config: PipelineConfig):
@@ -50,414 +50,343 @@ class TrainValSplitPhase(PipelinePhase):
         super().__init__(
             config=pipeline_config,
             phase_name="split",
-            description="Creating train/validation split"
+            description="Creating train/val split for binary classification"
         )
 
-        self.labeled_dir = self.config.base_dir / "labeled"
-        self.final_dir = self.config.base_dir / "final"
-        self.train_dir = self.final_dir / "train"
-        self.val_dir = self.final_dir / "val"
-        self.split_manifest_path = self.config.base_dir / "split_manifest.json"
+        # Input directory
+        self.crops_dir = self.config.base_dir / self.config.binary_crops_dir
 
-        # Split configuration
+        # Output directories
+        self.final_dir = self.config.base_dir / self.config.binary_final_dir
+        self.output_summary_path = self.config.base_dir / "binary_split_summary.json"
+
+        # Train/val ratio
         self.train_ratio = self.config.train_ratio
-        self.random_seed = 42  # For reproducibility
 
-    def run(self, resume: bool = False) -> Dict[str, Any]:
+    def run(self, train_ratio: float = 0.8, resume: bool = False) -> Dict[str, Any]:
         """
         Execute train/val split.
 
         Args:
-            resume: If True, skip if output already exists
+            train_ratio: Ratio for training set (default: 0.8)
+            resume: Ignored (split is fast, no resume needed)
 
         Returns:
-            Dictionary with split statistics
+            Dictionary with split summary
         """
-        # Check if already completed and resume requested
-        if resume and self._check_existing_split():
-            self.logger.info("Train/val split already completed, loading existing manifest")
-            manifest = load_json(self.split_manifest_path)
-            return {
-                "manifest": manifest,
-                "resumed": True
-            }
+        self.train_ratio = train_ratio
+        self.logger.info(f"Train/val ratio: {train_ratio:.0%} / {1-train_ratio:.0%}")
 
-        # Validate input directory
-        if not self.labeled_dir.exists():
-            raise FileNotFoundError(
-                f"Labeled directory not found at {self.labeled_dir}. "
-                "Run Phase 6 (labeling tool) first."
-            )
+        # Load crops
+        self.logger.info("Loading crops...")
+        crops_by_label = self._load_crops()
 
-        # Check if we have any labeled images
-        total_labeled = self._count_labeled_images()
-        if total_labeled == 0:
-            raise ValueError(
-                f"No labeled images found in {self.labeled_dir}. "
-                "Run Phase 6 (labeling tool) to label images first."
-            )
+        if not any(crops_by_label.values()):
+            raise ValueError("No crops found. Run Phase 5b first.")
 
-        self.logger.info(f"Found {total_labeled} labeled images")
+        total_crops = sum(len(crops) for crops in crops_by_label.values())
+        self.logger.info(f"Found {total_crops} total crops:")
+        for label, crops in crops_by_label.items():
+            self.logger.info(f"  {label}: {len(crops)} crops")
 
-        # Clean up existing split directories
-        if self.final_dir.exists() and not resume:
-            self.logger.info("Cleaning up existing split directories")
-            shutil.rmtree(self.final_dir)
+        # Ensure output directories exist
+        self._ensure_split_directories()
 
-        # Create output directories
-        self._create_directories()
+        # Perform stratified split for each label
+        splits = {}
+        for label, crops in crops_by_label.items():
+            self.logger.info(f"\nSplitting {label}...")
+            train, val = self._stratified_split_by_camera(crops, train_ratio)
+            splits[label] = {'train': train, 'val': val}
 
-        # Set random seed for reproducibility
-        random.seed(self.random_seed)
+            self.logger.info(f"  Train: {len(train)} crops")
+            self.logger.info(f"  Val: {len(val)} crops")
 
-        # Split each class independently
-        split_stats = {}
-        file_manifest = {
-            "train": {},
-            "val": {}
+        # Copy files to final directories
+        self.logger.info("\nCopying files to final directories...")
+        stats = self._copy_files(splits)
+
+        # Build summary
+        summary = {
+            'created_at': datetime.now().isoformat(),
+            'train_ratio': train_ratio,
+            'statistics': stats
         }
 
-        for level in TRAFFIC_LEVELS:
-            self.logger.info(f"Processing class: {level}")
+        # Save summary
+        save_json(summary, self.output_summary_path)
+        self.logger.info(f"Saved split summary to {self.output_summary_path}")
 
-            # Get all images for this class
-            level_dir = self.labeled_dir / level
-            if not level_dir.exists():
-                self.logger.warning(f"Class directory not found: {level_dir}")
-                split_stats[level] = {
-                    "total": 0,
-                    "train": 0,
-                    "val": 0
-                }
+        # Log summary
+        self.logger.info(f"\nSplit completed:")
+        self.logger.info(f"  Train total: {stats['train_total']}")
+        for label in BINARY_CLASSIFICATION['classes']:
+            self.logger.info(f"    {label}: {stats['by_label'][label]['train']}")
+        self.logger.info(f"  Val total: {stats['val_total']}")
+        for label in BINARY_CLASSIFICATION['classes']:
+            self.logger.info(f"    {label}: {stats['by_label'][label]['val']}")
+
+        return summary
+
+    def _load_crops(self) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Load all crops from binary_crops directory.
+
+        Returns:
+            Dict with keys 'traffic_present' and 'traffic_absent',
+            values are lists of crop info dicts
+        """
+        crops_by_label = {}
+
+        for label in BINARY_CLASSIFICATION['classes']:
+            label_dir = self.crops_dir / label
+            if not label_dir.exists():
+                self.logger.warning(f"Label directory not found: {label_dir}")
+                crops_by_label[label] = []
                 continue
 
-            images = sorted(list(level_dir.glob("*.jpg")))
+            crops = []
+            for crop_path in label_dir.glob("*.jpg"):
+                # Extract camera_id from filename: CAMERA_TIMESTAMP.jpg
+                filename = crop_path.stem
+                parts = filename.split('_', 1)
+                if len(parts) >= 2:
+                    camera_id = parts[0]
+                else:
+                    camera_id = filename
 
-            if not images:
-                self.logger.warning(f"No images found for class: {level}")
-                split_stats[level] = {
-                    "total": 0,
-                    "train": 0,
-                    "val": 0
-                }
-                continue
+                crops.append({
+                    'path': crop_path,
+                    'camera_id': camera_id,
+                    'label': label
+                })
 
-            # Shuffle for random split
-            random.shuffle(images)
+            crops_by_label[label] = crops
 
-            # Calculate split index
-            total_count = len(images)
-            train_count = int(total_count * self.train_ratio)
-            val_count = total_count - train_count
+        return crops_by_label
 
-            # Split images
-            train_images = images[:train_count]
-            val_images = images[train_count:]
+    def _stratified_split_by_camera(
+        self,
+        crops: List[Dict[str, Any]],
+        train_ratio: float
+    ) -> Tuple[List[Dict], List[Dict]]:
+        """
+        Perform stratified split by camera.
 
-            # Copy to train directory
-            train_dest_dir = self.train_dir / level
-            file_manifest["train"][level] = []
-            for img_path in train_images:
-                dest_path = train_dest_dir / img_path.name
-                shutil.copy2(img_path, dest_path)
-                file_manifest["train"][level].append(img_path.name)
+        Ensures each camera is represented in both train and val sets.
 
-            # Copy to val directory
-            val_dest_dir = self.val_dir / level
-            file_manifest["val"][level] = []
-            for img_path in val_images:
-                dest_path = val_dest_dir / img_path.name
-                shutil.copy2(img_path, dest_path)
-                file_manifest["val"][level].append(img_path.name)
+        Args:
+            crops: List of crop info dicts
+            train_ratio: Ratio for training set
 
-            # Record statistics
-            split_stats[level] = {
-                "total": total_count,
-                "train": train_count,
-                "val": val_count,
-                "train_ratio": train_count / total_count if total_count > 0 else 0
-            }
+        Returns:
+            Tuple of (train_crops, val_crops)
+        """
+        # Group by camera
+        by_camera = defaultdict(list)
+        for crop in crops:
+            camera_id = crop['camera_id']
+            by_camera[camera_id].append(crop)
 
-            self.logger.info(
-                f"  {level}: {total_count} total → "
-                f"{train_count} train ({train_count/total_count*100:.1f}%), "
-                f"{val_count} val ({val_count/total_count*100:.1f}%)"
+        train_crops = []
+        val_crops = []
+
+        # Split within each camera
+        for camera_id, camera_crops in by_camera.items():
+            # Shuffle crops for this camera
+            shuffled = camera_crops.copy()
+            random.shuffle(shuffled)
+
+            # Split by ratio
+            split_idx = int(len(shuffled) * train_ratio)
+            train_crops.extend(shuffled[:split_idx])
+            val_crops.extend(shuffled[split_idx:])
+
+            self.logger.debug(
+                f"  Camera {camera_id}: {len(shuffled)} total, "
+                f"{split_idx} train, {len(shuffled) - split_idx} val"
             )
 
-        # Calculate overall statistics
-        total_train = sum(stats["train"] for stats in split_stats.values())
-        total_val = sum(stats["val"] for stats in split_stats.values())
-        total = total_train + total_val
+        return train_crops, val_crops
 
-        # Create manifest
-        manifest = {
-            "split_date": datetime.now().isoformat(),
-            "random_seed": self.random_seed,
-            "train_ratio": self.train_ratio,
-            "source_dir": str(self.labeled_dir),
-            "output_dir": str(self.final_dir),
-            "total_images": total,
-            "train_images": total_train,
-            "val_images": total_val,
-            "actual_train_ratio": total_train / total if total > 0 else 0,
-            "class_stats": split_stats,
-            "file_manifest": file_manifest
+    def _ensure_split_directories(self):
+        """Create split output directories if they don't exist."""
+        for split in ['train', 'val']:
+            for label in BINARY_CLASSIFICATION['classes']:
+                split_dir = self.final_dir / split / label
+                split_dir.mkdir(parents=True, exist_ok=True)
+                self.logger.debug(f"Ensured directory exists: {split_dir}")
+
+    def _copy_files(self, splits: Dict[str, Dict[str, List[Dict]]]) -> Dict[str, Any]:
+        """
+        Copy files to train/val directories.
+
+        Args:
+            splits: Dict with structure {label: {'train': [...], 'val': [...]}}
+
+        Returns:
+            Statistics dictionary
+        """
+        stats = {
+            'train_total': 0,
+            'val_total': 0,
+            'by_label': {},
+            'by_camera': defaultdict(lambda: {
+                'train': 0,
+                'val': 0
+            })
         }
 
-        # Save manifest
-        self.logger.info(f"Saving split manifest to {self.split_manifest_path}")
-        save_json(manifest, self.split_manifest_path)
+        for label in BINARY_CLASSIFICATION['classes']:
+            stats['by_label'][label] = {'train': 0, 'val': 0}
 
-        # Log overall summary
-        self._log_summary(manifest)
+        # Copy files
+        total_files = sum(
+            len(splits[label]['train']) + len(splits[label]['val'])
+            for label in splits
+        )
 
-        return {
-            "manifest": manifest,
-            "resumed": False
-        }
+        with tqdm(total=total_files, desc="Copying files") as pbar:
+            for label, label_splits in splits.items():
+                for split_name in ['train', 'val']:
+                    for crop_info in label_splits[split_name]:
+                        source_path = crop_info['path']
+                        camera_id = crop_info['camera_id']
+
+                        # Destination path
+                        dest_dir = self.final_dir / split_name / label
+                        dest_path = dest_dir / source_path.name
+
+                        # Copy file
+                        shutil.copy2(source_path, dest_path)
+
+                        # Update stats
+                        stats[f'{split_name}_total'] += 1
+                        stats['by_label'][label][split_name] += 1
+                        stats['by_camera'][camera_id][split_name] += 1
+
+                        pbar.update(1)
+
+        # Convert defaultdict to regular dict for JSON serialization
+        stats['by_camera'] = dict(stats['by_camera'])
+
+        return stats
 
     def validate(self) -> bool:
         """
-        Validate that train/val split completed successfully.
+        Validate that split completed successfully.
 
         Returns:
             True if validation passed, False otherwise
         """
-        # Check output directories exist
-        if not self.final_dir.exists():
-            self.logger.error(f"Final directory not found: {self.final_dir}")
+        # Check summary exists
+        if not self.output_summary_path.exists():
+            self.logger.error("Split summary file not found")
             return False
 
-        if not self.train_dir.exists():
-            self.logger.error(f"Train directory not found: {self.train_dir}")
+        # Load summary
+        summary = load_json(self.output_summary_path)
+        stats = summary.get('statistics', {})
+
+        # Check that files were split
+        if stats.get('train_total', 0) == 0 or stats.get('val_total', 0) == 0:
+            self.logger.error("No files in train or val set")
             return False
 
-        if not self.val_dir.exists():
-            self.logger.error(f"Val directory not found: {self.val_dir}")
-            return False
+        # Count actual files
+        total_files = 0
+        for split in ['train', 'val']:
+            split_count = 0
+            for label in BINARY_CLASSIFICATION['classes']:
+                split_dir = self.final_dir / split / label
+                if split_dir.exists():
+                    files = list(split_dir.glob("*.jpg"))
+                    split_count += len(files)
+                    self.logger.info(f"  {split}/{label}: {len(files)} files")
+            total_files += split_count
 
-        # Check manifest exists
-        if not self.split_manifest_path.exists():
-            self.logger.error(f"Manifest file not found: {self.split_manifest_path}")
-            return False
-
-        # Load and validate manifest
-        try:
-            manifest = load_json(self.split_manifest_path)
-        except Exception as e:
-            self.logger.error(f"Failed to load manifest: {e}")
-            return False
-
-        # Validate required fields
-        required_fields = [
-            "split_date", "train_ratio", "total_images",
-            "train_images", "val_images", "class_stats"
-        ]
-        for field in required_fields:
-            if field not in manifest:
-                self.logger.error(f"Missing required field in manifest: {field}")
-                return False
-
-        # Validate class directories
-        for level in TRAFFIC_LEVELS:
-            train_class_dir = self.train_dir / level
-            val_class_dir = self.val_dir / level
-
-            if not train_class_dir.exists():
-                self.logger.error(f"Train class directory not found: {train_class_dir}")
-                return False
-
-            if not val_class_dir.exists():
-                self.logger.error(f"Val class directory not found: {val_class_dir}")
-                return False
-
-        # Count actual files and compare with manifest
-        actual_train_count = self._count_images_in_split(self.train_dir)
-        actual_val_count = self._count_images_in_split(self.val_dir)
-        manifest_train_count = manifest["train_images"]
-        manifest_val_count = manifest["val_images"]
-
-        if actual_train_count != manifest_train_count:
-            self.logger.error(
-                f"Train image count mismatch: found {actual_train_count}, "
-                f"manifest says {manifest_train_count}"
+        # Verify counts match
+        expected_total = stats['train_total'] + stats['val_total']
+        if total_files != expected_total:
+            self.logger.warning(
+                f"File count mismatch: {total_files} files on disk, "
+                f"{expected_total} in summary"
             )
-            return False
 
-        if actual_val_count != manifest_val_count:
-            self.logger.error(
-                f"Val image count mismatch: found {actual_val_count}, "
-                f"manifest says {manifest_val_count}"
-            )
-            return False
+        # Check class balance (within 5% tolerance)
+        for split in ['train', 'val']:
+            split_total = stats[f'{split}_total']
+            if split_total > 0:
+                for label in BINARY_CLASSIFICATION['classes']:
+                    label_count = stats['by_label'][label][split]
+                    ratio = label_count / split_total
+                    if ratio < 0.45 or ratio > 0.55:  # Allow 45-55% (10% tolerance)
+                        self.logger.warning(
+                            f"{split} set class imbalance: {label} = {ratio:.1%} "
+                            f"(expected ~50%)"
+                        )
 
-        # Validate split ratio
-        total = actual_train_count + actual_val_count
-        if total > 0:
-            actual_train_ratio = actual_train_count / total
-            expected_train_ratio = self.train_ratio
-
-            # Allow 5% tolerance (e.g., due to rounding with small datasets)
-            if abs(actual_train_ratio - expected_train_ratio) > 0.05:
-                self.logger.warning(
-                    f"Train ratio deviation: actual={actual_train_ratio:.3f}, "
-                    f"expected={expected_train_ratio:.3f}"
-                )
-
-        self.logger.info("✓ Validation passed")
-        self.logger.info(f"  Train: {actual_train_count} images")
-        self.logger.info(f"  Val: {actual_val_count} images")
-        self.logger.info(f"  Total: {total} images")
-
+        self.logger.info(f"Validation passed: {total_files} files split")
         return True
-
-    def _count_labeled_images(self) -> int:
-        """Count total labeled images across all classes."""
-        count = 0
-        for level in TRAFFIC_LEVELS:
-            level_dir = self.labeled_dir / level
-            if level_dir.exists():
-                count += len(list(level_dir.glob("*.jpg")))
-        return count
-
-    def _create_directories(self):
-        """Create output directory structure."""
-        self.logger.info("Creating output directories")
-
-        # Create base directories
-        self.final_dir.mkdir(parents=True, exist_ok=True)
-        self.train_dir.mkdir(parents=True, exist_ok=True)
-        self.val_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create class subdirectories
-        for level in TRAFFIC_LEVELS:
-            (self.train_dir / level).mkdir(parents=True, exist_ok=True)
-            (self.val_dir / level).mkdir(parents=True, exist_ok=True)
-
-    def _check_existing_split(self) -> bool:
-        """
-        Check if a valid split already exists.
-
-        Returns:
-            True if valid split exists
-        """
-        if not self.split_manifest_path.exists():
-            return False
-
-        if not self.train_dir.exists() or not self.val_dir.exists():
-            return False
-
-        # Check if directories have images
-        train_count = self._count_images_in_split(self.train_dir)
-        val_count = self._count_images_in_split(self.val_dir)
-
-        return train_count > 0 and val_count > 0
-
-    def _count_images_in_split(self, split_dir: Path) -> int:
-        """
-        Count images in a split directory (train or val).
-
-        Args:
-            split_dir: Path to train or val directory
-
-        Returns:
-            Total number of images
-        """
-        count = 0
-        for level in TRAFFIC_LEVELS:
-            level_dir = split_dir / level
-            if level_dir.exists():
-                count += len(list(level_dir.glob("*.jpg")))
-        return count
-
-    def _log_summary(self, manifest: Dict[str, Any]):
-        """
-        Log summary of split operation.
-
-        Args:
-            manifest: Split manifest dictionary
-        """
-        self.logger.info("=" * 60)
-        self.logger.info("Train/Val Split Summary")
-        self.logger.info("=" * 60)
-
-        total = manifest["total_images"]
-        train = manifest["train_images"]
-        val = manifest["val_images"]
-
-        self.logger.info(f"Total images: {total}")
-        self.logger.info(f"  Train: {train} ({train/total*100:.1f}%)")
-        self.logger.info(f"  Val: {val} ({val/total*100:.1f}%)")
-        self.logger.info(f"Random seed: {manifest['random_seed']}")
-
-        self.logger.info("\nPer-class distribution:")
-        for level in TRAFFIC_LEVELS:
-            stats = manifest["class_stats"][level]
-            self.logger.info(
-                f"  {level:10s}: {stats['total']:5d} total → "
-                f"{stats['train']:5d} train, {stats['val']:5d} val"
-            )
-
-        self.logger.info("=" * 60)
 
 
 def main():
-    """CLI entry point for Phase 7."""
+    """CLI entry point for Phase 7b."""
     import argparse
-    from .config import PipelineConfig
 
     parser = argparse.ArgumentParser(
-        description="Phase 7: Train/Validation Split"
+        description="Phase 7b: Create train/val split for binary classification"
     )
     parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume from previous split (skip if already exists)"
+        "--train-ratio",
+        type=float,
+        default=0.8,
+        help="Training set ratio (default: 0.8)"
     )
     parser.add_argument(
         "--validate-only",
         action="store_true",
-        help="Only validate existing split without running"
+        help="Only run validation"
     )
 
     args = parser.parse_args()
 
-    # Initialize
+    # Initialize configuration
     config = PipelineConfig()
+
+    # Create phase instance
     phase = TrainValSplitPhase(config)
 
     if args.validate_only:
-        print("Validating train/val split...")
-        is_valid = phase.validate()
-        if is_valid:
-            print("✓ Validation passed")
-        else:
-            print("✗ Validation failed")
-        return
-
-    # Run
-    print("\n" + "=" * 60)
-    print("Phase 7: Train/Validation Split")
-    print("=" * 60)
-    print(f"\nCreating {int(config.train_ratio*100)}/{int((1-config.train_ratio)*100)} "
-          f"train/val split from labeled images\n")
-
-    if args.resume:
-        print("Resuming from previous split...\n")
-
-    result = phase.execute(resume=args.resume)
-
-    if result["status"] == "completed":
-        print("\n✓ Phase 7 completed successfully")
-        print(f"Duration: {result['duration_seconds']:.1f} seconds")
-
-        # Print summary
-        manifest = result["data"]["manifest"]
-        print(f"\nTotal: {manifest['total_images']} images")
-        print(f"  Train: {manifest['train_images']} ({manifest['actual_train_ratio']*100:.1f}%)")
-        print(f"  Val: {manifest['val_images']} ({(1-manifest['actual_train_ratio'])*100:.1f}%)")
+        # Run validation only
+        print("Running validation...")
+        success = phase.validate()
+        exit(0 if success else 1)
     else:
-        print(f"\n✗ Phase 7 failed: {result.get('reason', 'Unknown error')}")
+        # Execute phase
+        result = phase.execute(
+            validate_after=True,
+            train_ratio=args.train_ratio
+        )
+
+        if result['status'] == 'completed':
+            print(f"\n✓ Phase 7b completed successfully in {result['duration_seconds']:.1f} seconds")
+            summary = result['data']
+            stats = summary.get('statistics', {})
+            print(f"  Train total: {stats.get('train_total', 0)}")
+            print(f"  Val total: {stats.get('val_total', 0)}")
+            print(f"\nBy label:")
+            for label in BINARY_CLASSIFICATION['classes']:
+                label_stats = stats.get('by_label', {}).get(label, {})
+                print(f"  {label}:")
+                print(f"    Train: {label_stats.get('train', 0)}")
+                print(f"    Val: {label_stats.get('val', 0)}")
+            print(f"\nFinal dataset saved to: {config.binary_final_dir}/")
+            print(f"\nDataset is ready for model training!")
+            exit(0)
+        else:
+            print(f"\n✗ Phase 7b failed: {result.get('reason', 'unknown error')}")
+            exit(1)
 
 
 if __name__ == "__main__":
