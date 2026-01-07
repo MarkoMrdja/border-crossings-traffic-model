@@ -224,23 +224,19 @@ class YOLOAnalysisPhase(PipelinePhase):
             if self.use_polygon_filtering and camera_id and camera_id in self.lane_lookup:
                 polygon_data = self.lane_lookup[camera_id]
                 polygon = polygon_data['polygon']
-                total_lanes = polygon_data['lane_count']
 
-                # Filter boxes inside polygon
+                # Filter boxes inside polygon (excludes parked cars outside lanes)
                 filtered_boxes = self._filter_boxes_by_polygon(box_data, polygon)
                 vehicle_count = len(filtered_boxes)
 
-                # Detect active lanes and classify traffic
-                active_lanes = self._detect_active_lanes(filtered_boxes, polygon, total_lanes)
-                traffic_level = self._classify_traffic_lane_aware(vehicle_count, active_lanes)
+                # Use basic categorization (no lane-aware normalization)
+                traffic_level = categorize_traffic(vehicle_count)
 
                 return {
                     "vehicle_count": vehicle_count,
                     "vehicle_count_total": len(box_data),  # Before filtering
                     "filtered_count": len(box_data) - vehicle_count,  # Removed by polygon
                     "traffic_level": traffic_level,
-                    "lane_count": total_lanes,
-                    "active_lanes": active_lanes,
                     "boxes": filtered_boxes
                 }
             else:
@@ -323,7 +319,6 @@ class YOLOAnalysisPhase(PipelinePhase):
             "confidence_threshold": self.confidence_threshold,
             "vehicle_classes": self.vehicle_classes,
             "polygon_filtering": self.use_polygon_filtering,
-            "lane_aware_classification": self.use_polygon_filtering,
             "created_at": datetime.now().isoformat(),
             "analyses": existing_results.get("analyses", []) if existing_results else []
         }
@@ -514,108 +509,6 @@ class YOLOAnalysisPhase(PipelinePhase):
 
         return filtered
 
-    def _detect_active_lanes(
-        self,
-        boxes: List[Dict[str, Any]],
-        polygon: np.ndarray,
-        total_lanes: int
-    ) -> int:
-        """
-        Detect how many lanes are actually active based on vehicle distribution.
-
-        Uses X-coordinate clustering to determine which lanes have vehicles.
-        This prevents over-normalization when only some lanes are open at a
-        border crossing with many total lanes.
-
-        Args:
-            boxes: List of filtered bounding boxes (vehicles inside polygon)
-            polygon: Polygon vertices (N, 2) defining the lane area
-            total_lanes: Total number of lanes at this crossing
-
-        Returns:
-            Number of lanes with at least one vehicle (active lanes)
-        """
-        # Skip clustering for small border crossings (<=2 lanes)
-        if total_lanes <= 2:
-            return total_lanes
-
-        # If no vehicles, return total lanes (avoids division by zero later)
-        if not boxes:
-            return total_lanes
-
-        # Calculate polygon width (min/max x coordinates)
-        x_coords = polygon[:, 0]
-        polygon_min_x = float(np.min(x_coords))
-        polygon_width = float(np.max(x_coords) - polygon_min_x)
-
-        # Avoid division by zero if polygon is degenerate
-        if polygon_width == 0:
-            return total_lanes
-
-        # Create bins for each lane
-        lane_bins = [0] * total_lanes
-
-        # Assign each vehicle to a lane bin based on its center X coordinate
-        for box in boxes:
-            xyxy = box['xyxy']
-
-            # Calculate center point
-            cx = (xyxy[0] + xyxy[2]) / 2
-
-            # Normalize x to polygon-relative coordinate (0 to 1)
-            normalized_x = (cx - polygon_min_x) / polygon_width
-
-            # Clamp to [0, 1] range (handle edge cases)
-            normalized_x = max(0.0, min(1.0, normalized_x))
-
-            # Assign to lane bin
-            lane_idx = min(int(normalized_x * total_lanes), total_lanes - 1)
-            lane_bins[lane_idx] += 1
-
-        # Count bins with at least one vehicle
-        active_lanes = sum(1 for count in lane_bins if count > 0)
-
-        # Sanity check: should have at least 1 active lane if we have vehicles
-        if active_lanes < 1:
-            active_lanes = total_lanes
-
-        return active_lanes
-
-    def _classify_traffic_lane_aware(
-        self,
-        vehicle_count: int,
-        active_lanes: int
-    ) -> str:
-        """
-        Classify traffic level using lane-aware thresholds.
-
-        Formula:
-        - vehicles_per_lane = vehicle_count / active_lanes
-        - empty: < 1 vehicle per lane
-        - light: 1-2.5 vehicles per lane
-        - moderate: 2.5-5 vehicles per lane
-        - heavy: >= 5 vehicles per lane
-
-        Args:
-            vehicle_count: Number of vehicles detected (inside polygon)
-            active_lanes: Number of lanes with vehicles (detected by clustering)
-
-        Returns:
-            Traffic level string with "likely_" prefix
-        """
-        if active_lanes == 0:
-            active_lanes = 1  # Avoid division by zero
-
-        vehicles_per_lane = vehicle_count / active_lanes
-
-        if vehicles_per_lane < 1.0:
-            return "likely_empty"
-        elif vehicles_per_lane < 2.5:
-            return "likely_light"
-        elif vehicles_per_lane < 5.0:
-            return "likely_moderate"
-        else:
-            return "likely_heavy"
 
 
 def main():

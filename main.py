@@ -93,7 +93,7 @@ PHASE_REGISTRY = {
     "2": PhaseMetadata(
         number="2",
         name="YOLO Analysis",
-        description="Run YOLO with automatic polygon filtering (if lane_polygons.json exists)",
+        description="Run YOLO with polygon filtering to exclude parked cars outside lanes",
         class_name="YOLOAnalysisPhase",
         output_files=["yolo_results.json"],
         dependencies=["1c"],
