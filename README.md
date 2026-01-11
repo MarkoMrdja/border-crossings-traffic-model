@@ -1,742 +1,191 @@
 # Border Crossings Traffic Model - Dataset Pipeline
 
-A multi-phase pipeline for creating a labeled traffic density dataset from 32 Serbian border crossing cameras. This dataset will be used to train a CNN that classifies traffic density in camera-specific ROI regions where YOLO detection fails on distant vehicles.
+A multi-phase pipeline for creating a labeled traffic density dataset from Serbian border crossing cameras. This dataset trains a CNN to classify traffic density in camera-specific regions where YOLO detection fails on distant vehicles.
 
 ## 🎯 Project Goal
 
-Train a CNN to classify traffic density with >85% accuracy on held-out validation set, with:
-- Heavy traffic recall >90% (don't miss traffic jams)
-- Empty road precision >90% (avoid false alarms)
+Train a CNN to classify binary traffic presence (traffic_present / traffic_absent) with >85% accuracy, achieving:
+- Traffic present recall >90% (don't miss congestion)
+- Traffic absent precision >90% (avoid false alarms)
 - Processing time <100ms per image on M2 MacBook (real-time capable)
 
-## 📊 Dataset Overview
+## 📊 Current Dataset Status
 
-- **Target**: 16,000 labeled images (500 per camera × 32 cameras)
-- **Cameras**: 16 border crossings × 2 directions (U/I) = 32 cameras
+- **Labeled images**: 4,101 images (2,909 absent, 1,056 present, 136 uncertain)
+- **Cameras**: 20 active border crossings (16 U/I pairs)
 - **Source**: Azure Blob Storage (~18M images from Dec 2023 onwards)
-- **Classes**: 4 traffic density levels (empty, light, moderate, heavy)
-- **Distribution**: Stratified across 5 time buckets × 4 seasons
-
-### Border Crossings (Serbia)
-
-| Border | Direction | Neighbor | Border | Direction | Neighbor |
-|--------|-----------|----------|--------|-----------|----------|
-| GRADINA | U/I | Bulgaria | SID | U/I | Croatia |
-| VRSKA-CUKA | U/I | Bulgaria | BATROVCI | U/I | Croatia |
-| PRESEVO | U/I | N. Macedonia | VATIN | U/I | Romania |
-| GOSTUN | U/I | Montenegro | JABUKA | U/I | Romania |
-| SPILJANI | U/I | Montenegro | HORGOS | U/I | Hungary |
-| TRBUSNICA | U/I | Bosnia | KELEBIJA | U/I | Hungary |
-| KOTROMAN | U/I | Bosnia | DJALA | U/I | Hungary |
-| MZVORNIK | U/I | Bosnia | - | - | - |
-| RACA | U/I | Bosnia | - | - | - |
-
-## 🏗️ Project Structure
-
-```
-.
-├── dataset_pipeline/              # Multi-phase data processing pipeline
-│   ├── __init__.py               # Package exports
-│   ├── base.py                   # Abstract PipelinePhase base class
-│   ├── config.py                 # Configuration (Azure, Pipeline, Constants)
-│   ├── azure_client.py           # Azure Blob Storage wrapper
-│   ├── utils.py                  # Common utilities (paths, JSON, progress)
-│   ├── phase1_discover.py        # Phase 1a: Structure Discovery
-│   ├── phase1_sample.py          # Phase 1b: Stratified Sampling
-│   ├── phase1_download.py        # Phase 1c: Parallel Download
-│   ├── phase2_yolo.py            # Phase 2: YOLO Analysis
-│   ├── phase3_balance.py         # Phase 3: Traffic-Balanced Selection
-│   ├── phase4_roi_tool.py        # Phase 4: ROI Definition Tool
-│   ├── phase5_crop.py            # Phase 5: Batch Cropping
-│   ├── phase6_label_tool.py      # Phase 6: Labeling Tool
-│   └── phase7_split.py           # Phase 7: Train/Val Split
-│
-├── traffic_dataset/              # Working directory for all data
-│   ├── inventory.json            # Container structure (Phase 1a output)
-│   ├── sample_manifest.json      # Selected samples (Phase 1b output)
-│   ├── download_progress.json    # Download state (Phase 1c state)
-│   ├── yolo_results.json         # Vehicle detections (Phase 2 output)
-│   ├── roi_config.json           # ROI polygons (Phase 4 output)
-│   ├── labeling_progress.json    # Labeling state (Phase 6 state)
-│   ├── raw/                      # Downloaded images (Phase 1c output)
-│   ├── crops/                    # 64×64 ROI crops (Phase 5 output)
-│   ├── labeled/                  # Human-verified labels (Phase 6 output)
-│   └── final/                    # Train/val split (Phase 7 output)
-│
-├── tests/                        # Unit tests
-│   └── test_utils.py            # Utility function tests
-│
-├── .beads/                       # Issue tracking database
-├── PROJECT_CONTEXT.md            # Project overview
-├── TECHNICAL_SPECIFICATION.md    # Detailed 7-phase specification
-├── CLAUDE.md                     # AI agent instructions
-├── requirements.txt              # Python dependencies
-└── .env                          # Azure credentials (not in git)
-```
-
-## 📋 Pipeline Phases
-
-### ✅ **Phase 1a: Structure Discovery** (`phase1_discover.py`)
-**Status**: Implemented
-**Purpose**: Map Azure Blob Storage container structure hierarchically
-**Time**: 5-15 minutes
-
-Discovers the container structure (borders → directions → years → months → days) without listing all 18M blobs.
-
-```bash
-# Run structure discovery
-python -m dataset_pipeline.phase1_discover
-
-# Resume from existing inventory
-python -m dataset_pipeline.phase1_discover --resume
-
-# Validate only
-python -m dataset_pipeline.phase1_discover --validate-only
-```
-
-**Output**: `traffic_dataset/inventory.json`
-
-### ✅ **Phase 1b: Stratified Sampling** (`phase1_sample.py`)
-**Status**: Implemented
-**Purpose**: Select 700 images per camera with stratified distribution
-**Time**: 10-30 minutes
-
-Selects images uniformly across:
-- **5 time buckets**: Night (22-06), Morning (6-10), Midday (10-14), Afternoon (14-18), Evening (18-22)
-- **4 seasons**: Winter (12,01,02), Spring (03-05), Summer (06-08), Autumn (09-11)
-- **Target**: 35 images per time-season cell × 20 cells = 700 per camera
-
-```bash
-# Run stratified sampling
-python -m dataset_pipeline.phase1_sample
-
-# Resume from existing manifest
-python -m dataset_pipeline.phase1_sample --resume
-```
-
-**Output**: `traffic_dataset/sample_manifest.json` (22,400 samples)
-
-### ✅ **Phase 1c: Parallel Download** (`phase1_download.py`)
-**Status**: Implemented
-**Purpose**: Download all selected images from Azure
-**Time**: 1.5-3 hours
-
-Downloads 22,400 images with resume capability, progress tracking, and error handling.
-
-```bash
-# Download images (4 parallel workers by default)
-python -m dataset_pipeline.phase1_download
-
-# Resume interrupted download
-python -m dataset_pipeline.phase1_download --resume
-
-# Use 8 parallel workers
-python -m dataset_pipeline.phase1_download --workers 8
-```
-
-**Output**: Images in `traffic_dataset/raw/{CAMERA_ID}/`
-
-### ✅ **Phase 2: YOLO Analysis** (`phase2_yolo.py`)
-**Status**: Implemented
-**Purpose**: Run YOLO vehicle detection on all images
-**Time**: ~75 minutes with MPS
-
-Runs YOLO11n to detect vehicles (cars, motorcycles, buses, trucks) and categorizes traffic:
-- **Empty**: 0-2 vehicles
-- **Light**: 3-6 vehicles
-- **Moderate**: 7-15 vehicles
-- **Heavy**: 16+ vehicles
-
-```bash
-# Run YOLO analysis (auto-detect MPS/CUDA/CPU)
-python -m dataset_pipeline.phase2_yolo
-
-# Resume from existing results
-python -m dataset_pipeline.phase2_yolo --resume
-
-# Force CPU device
-python -m dataset_pipeline.phase2_yolo --device cpu
-
-# Use different model or confidence
-python -m dataset_pipeline.phase2_yolo --model yolo11s --confidence 0.3
-```
-
-**Output**: `traffic_dataset/yolo_results.json` with vehicle counts, bounding boxes, and traffic levels
-
-### ✅ **YOLO Verification Tool** (`verify_yolo.py`)
-**Status**: Implemented
-**Purpose**: Verify YOLO results before proceeding to Phase 3
-**Time**: ~2-5 minutes
-
-Analyzes YOLO detection results to ensure data quality with:
-- Distribution statistics (overall and per-camera)
-- Traffic level balance verification
-- Issue detection (insufficient samples, outliers, imbalanced cameras)
-- Visualizations (histograms, bar charts, sample images with bounding boxes)
-- Comprehensive text and JSON reports
-
-```bash
-# Run full verification
-python -m dataset_pipeline.verify_yolo
-
-# Customize number of sample images per level
-python -m dataset_pipeline.verify_yolo --samples 10
-
-# Custom output directory
-python -m dataset_pipeline.verify_yolo --output-dir ./my_verification
-```
-
-**Outputs** (saved to `traffic_dataset/yolo_verification/`):
-- `distribution_histogram.png` - Vehicle count distribution with threshold lines
-- `traffic_levels_by_camera.png` - Stacked bar chart of traffic levels per camera
-- `sample_detections_{level}.jpg` - Grid of sample images with bounding boxes (4 files)
-- `yolo_verification_report.txt` - Human-readable summary report
-- `yolo_verification.json` - Machine-readable report with full statistics
-
-**Quality Checks**:
-- ✓ Sufficient samples per traffic level for balanced selection (125+ per camera per level)
-- ✓ No extreme outliers (>50 vehicles likely indicates false positives)
-- ✓ Reasonable distribution across cameras and traffic levels
-- ⚠️ Warns about cameras with imbalanced distributions
-- 🔴 Flags critical issues that may prevent Phase 3 from succeeding
-
-### ✅ **Phase 3: Traffic-Balanced Selection** (`phase3_balance.py`)
-**Status**: Implemented
-**Purpose**: Select 500 final images per camera, balanced across 4 traffic levels (125 per level)
-**Time**: <1 minute
-
-Selects from the YOLO-analyzed samples to ensure balanced representation across traffic density classes:
-- **Target**: 125 images per traffic level (empty, light, moderate, heavy) per camera
-- **Total**: 500 images per camera × 32 cameras = 16,000 images
-- **Strategy**: Priority-based selection (heavy → moderate → light → empty)
-- **ROI References**: Identifies highest-traffic image per camera for ROI definition
-
-```bash
-# Run balanced selection
-python -m dataset_pipeline.phase3_balance
-
-# Resume from existing selection
-python -m dataset_pipeline.phase3_balance --resume
-
-# Validate only
-python -m dataset_pipeline.phase3_balance --validate-only
-```
-
-**Outputs**:
-- `traffic_dataset/balanced_selection.json` - Selected samples with statistics
-- `traffic_dataset/roi_references.json` - Reference images for ROI definition (Phase 4)
-
-### ✅ **Phase 4: ROI Definition Tool** (`phase4_roi_tool.py`)
-**Status**: Implemented
-**Purpose**: Define polygon regions where YOLO misses vehicles
-**Time**: ~2.5 hours (human-in-the-loop)
-
-Interactive OpenCV-based GUI for defining polygon ROIs on each camera. Shows reference images (highest traffic) with YOLO bounding boxes overlaid, allowing users to draw polygons around regions where YOLO misses distant vehicles.
-
-**Controls**:
-- **Left-click**: Add polygon vertex
-- **Right-click**: Remove last vertex
-- **N**: Save polygon and move to next camera
-- **R**: Reset current polygon
-- **S**: Skip camera (no ROI defined)
-- **Q**: Save progress and quit
-
-```bash
-# Run ROI definition tool (interactive)
-python -m dataset_pipeline.phase4_roi_tool
-
-# Resume (skip cameras with existing ROIs)
-python -m dataset_pipeline.phase4_roi_tool --resume
-
-# Validate only
-python -m dataset_pipeline.phase4_roi_tool --validate-only
-```
-
-**Output**: `traffic_dataset/roi_config.json` with polygon definitions per camera
-
-**Features**:
-- Visual feedback with YOLO boxes in green, polygon in yellow
-- Live vertex count and camera progress
-- Resume capability - can quit and continue later
-- Per-camera ROI polygons saved with timestamps
-
-### ✅ **Phase 5: Batch Crop** (`phase5_crop.py`)
-**Status**: Implemented
-**Purpose**: Crop ROI regions and resize to 64×64
-**Time**: 5-10 minutes
-
-Crops defined ROI regions from selected images and organizes by predicted traffic level.
-
-```bash
-# Run batch cropping
-python -m dataset_pipeline.phase5_crop
-
-# Resume from existing progress
-python -m dataset_pipeline.phase5_crop --resume
-
-# Validate only
-python -m dataset_pipeline.phase5_crop --validate-only
-```
-
-**Output**: 16,000 cropped 64×64 images in `crops/likely_{level}/` folders
-
-### ✅ **Phase 6: Labeling & Verification** (`phase6_label_tool.py`)
-**Status**: Implemented
-**Purpose**: Human verification of auto-assigned labels
-**Time**: 2-3 hours (human-in-the-loop)
-
-Interactive OpenCV-based GUI for verifying and correcting YOLO-assigned traffic labels. Shows 64×64 crops scaled up for visibility with predicted labels, allowing quick confirmation or correction.
-
-**Controls**:
-- **Enter**: Confirm predicted label
-- **1-4**: Assign to specific traffic level (1=empty, 2=light, 3=moderate, 4=heavy)
-- **S**: Skip image
-- **B**: Go back (undo last label)
-- **Q**: Save progress and quit
-
-```bash
-# Run labeling tool (interactive)
-python -m dataset_pipeline.phase6_label_tool
-
-# Resume from previous session
-python -m dataset_pipeline.phase6_label_tool --resume
-
-# Validate only
-python -m dataset_pipeline.phase6_label_tool --validate-only
-```
-
-**Outputs**:
-- Images organized in `labeled/{class}/` directories by verified label
-- `labeling_progress.json` - Progress tracking with correction statistics
-
-**Features**:
-- Visual feedback with scaled-up crops for easy viewing
-- Live progress tracking (confirmed, corrected, skipped counts)
-- Correction pattern analysis
-- Resume capability - can quit and continue later
-- Undo functionality to correct mistakes
-- Priority-based processing (heavy → moderate → light → empty)
-
-### ✅ **Phase 7: Train/Val Split** (`phase7_split.py`)
-**Status**: Implemented
-**Purpose**: Create 80/20 train/validation split
-**Time**: <1 minute
-
-Splits verified labels into training (12,800) and validation (3,200) sets using stratified random sampling to maintain class balance.
-
-```bash
-# Run train/val split
-python -m dataset_pipeline.phase7_split
-
-# Resume from existing split
-python -m dataset_pipeline.phase7_split --resume
-
-# Validate only
-python -m dataset_pipeline.phase7_split --validate-only
-```
-
-**Output**: Images in `final/train/` and `final/val/` directories, plus `split_manifest.json`
-
-**Features**:
-- Stratified 80/20 split per traffic class
-- Reproducible random seed for consistent splits
-- Copy operation preserves original labeled images
-- Detailed manifest with per-class statistics
+- **Classification**: Binary (traffic_present / traffic_absent)
+- **Distribution**: Stratified across time and seasons
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
-- Azure credentials (service principal with read access to blob storage)
-- ~50GB disk space for images
-
-### Installation
-
+1. **Install dependencies**:
 ```bash
-# Clone repository
-git clone <repository-url>
-cd border-crossings-traffic-model
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Configure Azure credentials in .env
-cp .env.example .env  # Edit with your credentials
 ```
 
-**Required environment variables** (`.env`):
+2. **Configure Azure credentials** (create `.env` file):
 ```bash
-AZURE_CLIENT_ID=your-client-id
-AZURE_TENANT_ID=your-tenant-id
-AZURE_CLIENT_SECRET=your-client-secret
-AZURE_STORAGE_URL=https://borderimgstorage.blob.core.windows.net/
+AZURE_CLIENT_ID=your_client_id
+AZURE_TENANT_ID=your_tenant_id
+AZURE_CLIENT_SECRET=your_client_secret
+AZURE_STORAGE_URL=your_storage_url
 ```
 
-### Running the Pipeline
-
-**NEW: Unified CLI** (Recommended)
-
-Use `main.py` for streamlined pipeline management:
+### Run the Pipeline
 
 ```bash
-# Check pipeline status
+# Check current status
 python main.py status
 
-# Run entire pipeline with resume capability
+# Run entire pipeline with resume
 python main.py run --all --resume
 
 # Run specific phase
-python main.py run --phase 2 --device mps
+python main.py run --phase 2 --device mps --resume
 
-# Run from phase 3 onwards
-python main.py run --from-phase 3 --resume
-
-# Dry run to see execution plan
-python main.py run --all --dry-run
-
-# Validate all completed phases
+# Validate outputs
 python main.py validate --all
+```
 
+## 📋 Pipeline Overview
+
+| Phase | Name | Interactive | Time | Status |
+|-------|------|------------|------|--------|
+| 1a | Structure Discovery | No | 5-15 min | ✅ Complete |
+| 1b | Stratified Sampling | No | 10-30 min | ✅ Complete |
+| 1c | Parallel Download | No | 1.5-3 hrs | ✅ Complete |
+| 2 | YOLO Analysis | No | ~75 min | ✅ Complete |
+| 2a | Lane Annotation | Yes | 2-3 hrs | ✅ Complete |
+| 3 | Binary Selection | No | 1-2 min | ✅ Complete |
+| 4 | Label Review | Yes | 1-6 hrs | ✅ Complete |
+| 5 | Exclusion Zones | Yes | 2-3 hrs | 🔄 Ready |
+| 6 | Crop Regions | No | 15-20 min | 🔄 Ready |
+| 7 | Train/Val Split | No | 1-2 min | 🔄 Ready |
+
+**Interactive phases** require human input. All phases support `--resume` to continue from saved progress.
+
+## 🏗️ Project Structure
+
+```
+.
+├── dataset_pipeline/           # Multi-phase pipeline modules
+│   ├── phase1_discover.py     # Azure structure discovery
+│   ├── phase1_sample.py       # Stratified sampling
+│   ├── phase1_download.py     # Parallel download
+│   ├── phase2_yolo.py         # YOLO vehicle detection
+│   ├── phase2a_lane_annotation.py  # Lane polygon annotation
+│   ├── phase3_selection.py    # Binary balanced selection
+│   ├── phase4_review.py       # Manual label review
+│   ├── phase5_exclusion_zones.py   # YOLO failure regions
+│   ├── phase6_crop.py         # ROI cropping
+│   └── phase7_split.py        # Train/val split
+│
+├── traffic_dataset/           # Working data directory
+│   ├── raw/                   # Downloaded images
+│   ├── binary_labeled/        # Reviewed labels
+│   └── binary_final/          # Train/val split
+│
+├── docs/                      # Documentation
+│   ├── ARCHITECTURE.md        # System architecture & design
+│   ├── WORKFLOW.md            # Complete pipeline workflow
+│   └── guides/
+│       └── lane_annotation.md # Lane annotation guide
+│
+├── main.py                    # Pipeline orchestrator CLI
+├── CLAUDE.md                  # AI agent instructions
+└── requirements.txt           # Python dependencies
+```
+
+## 📚 Documentation
+
+- **[Architecture](docs/ARCHITECTURE.md)**: System design, data structures, and technical specifications
+- **[Workflow](docs/WORKFLOW.md)**: Step-by-step pipeline execution guide
+- **[Lane Annotation Guide](docs/guides/lane_annotation.md)**: How to annotate lane polygons
+
+## 🔧 Common Commands
+
+### Check Status
+```bash
+python main.py status              # Show pipeline progress
+python main.py validate --all      # Validate all phases
+```
+
+### Run Phases
+```bash
+# YOLO analysis with MPS acceleration
+python main.py run --phase 2 --device mps --resume
+
+# Lane annotation (interactive)
+python main.py run --phase 2a --resume
+
+# Binary selection
+python main.py run --phase 3 --target-per-class 3000
+
+# Label review (interactive, borderline only)
+python main.py run --phase 4 --resume
+
+# Label review (interactive, all images)
+python main.py run --phase 4 --review-all --resume
+```
+
+### Reset & Troubleshooting
+```bash
 # Reset a phase (creates backup)
 python main.py reset --phase 5
 
-# Get help
-python main.py --help
-python main.py run --help
+# View logs
+tail -f traffic_dataset/pipeline.log
 ```
 
-**OR: Run phases individually** (Manual)
+## 🎓 Course Project
 
-Execute phases sequentially:
+This project serves as an introduction to deep learning course project with learning objectives:
+- Understanding CNN architecture and layer types
+- Hands-on dataset curation and labeling
+- Training, validation, and evaluation of neural networks
+- Working with real-world computer vision problems
+- Hybrid approach combining traditional CV (YOLO) with custom models
+
+## 🛠️ Technology Stack
+
+- **Python 3.10+**
+- **YOLO**: ultralytics (yolo11n for detection)
+- **Deep Learning**: PyTorch with MPS (Apple Silicon) support
+- **Cloud**: Azure Blob Storage (azure-storage-blob, azure-identity)
+- **CV**: OpenCV, Pillow
+- **Progress**: tqdm, rich
+
+## 📝 Issue Tracking
+
+This project uses [bd (beads)](https://github.com/yourusername/beads) for issue tracking:
 
 ```bash
-# Phase 1a: Discover structure (~10 min)
-python -m dataset_pipeline.phase1_discover
-
-# Phase 1b: Sample selection (~20 min)
-python -m dataset_pipeline.phase1_sample
-
-# Phase 1c: Download images (~2 hours)
-python -m dataset_pipeline.phase1_download --workers 4
-
-# Phase 2: YOLO analysis (~75 min on M2 MacBook)
-python -m dataset_pipeline.phase2_yolo
-
-# Verify YOLO results (~2-5 min)
-python -m dataset_pipeline.verify_yolo
-
-# Phase 3: Balanced selection (<1 min)
-python -m dataset_pipeline.phase3_balance
-
-# Phase 4: ROI definition (~2.5 hours, interactive)
-python -m dataset_pipeline.phase4_roi_tool
-
-# Phase 5: Batch cropping (5-10 min)
-python -m dataset_pipeline.phase5_crop
-
-# Phase 6: Labeling verification (~2-3 hours, interactive)
-python -m dataset_pipeline.phase6_label_tool
-
-# Phase 7: Train/val split (<1 min)
-python -m dataset_pipeline.phase7_split
-```
-
-### Resume Capability
-
-All phases support `--resume` to skip completed work:
-
-```bash
-# Resume interrupted download
-python -m dataset_pipeline.phase1_download --resume
-
-# Resume YOLO analysis
-python -m dataset_pipeline.phase2_yolo --resume
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest tests/
-
-# Run with coverage
-pytest --cov=dataset_pipeline tests/
-
-# Run specific test file
-pytest tests/test_utils.py
-```
-
-## 📦 Dependencies
-
-**Core**:
-- `azure-storage-blob>=12.19.0` - Azure Blob Storage access
-- `azure-identity>=1.15.0` - Azure authentication
-- `python-dotenv>=1.0.0` - Environment variable management
-
-**Computer Vision**:
-- `ultralytics>=8.0.0` - YOLO models
-- `torch>=2.0.0` - PyTorch deep learning
-- `torchvision>=0.15.0` - Vision utilities
-- `opencv-python>=4.8.0` - Image processing
-- `Pillow>=10.0.0` - Image I/O
-
-**Utilities**:
-- `numpy>=1.24.0` - Numerical computing
-- `tqdm>=4.66.0` - Progress bars
-
-## 🔧 Configuration
-
-### Pipeline Configuration (`dataset_pipeline/config.py`)
-
-```python
-from dataset_pipeline.config import PipelineConfig
-
-config = PipelineConfig()
-config.base_dir                        # Path("./traffic_dataset")
-config.initial_samples_per_camera      # 700
-config.final_samples_per_camera        # 500
-config.crop_size                       # 64
-config.train_ratio                     # 0.8
-```
-
-### YOLO Configuration
-
-```python
-from dataset_pipeline.config import YOLO_CONFIG
-
-YOLO_CONFIG = {
-    "model": "yolo11n",              # Nano model for efficiency
-    "confidence_threshold": 0.25,    # Detection confidence
-    "device": "mps",                 # Apple Silicon GPU
-    "classes": [2, 3, 5, 7],        # car, motorcycle, bus, truck
-}
-```
-
-### Traffic Level Thresholds
-
-```python
-from dataset_pipeline.config import TRAFFIC_THRESHOLDS
-
-TRAFFIC_THRESHOLDS = {
-    "empty": (0, 2),           # 0-2 vehicles
-    "light": (3, 6),           # 3-6 vehicles
-    "moderate": (7, 15),       # 7-15 vehicles
-    "heavy": (16, float("inf"))  # 16+ vehicles
-}
-```
-
-## 📊 Data Distribution
-
-### Temporal Stratification
-
-**Time Buckets** (per camera):
-
-| Bucket | Hours | Images per Camera |
-|--------|-------|-------------------|
-| Night | 22:00 - 05:59 | 140 |
-| Morning | 06:00 - 09:59 | 140 |
-| Midday | 10:00 - 13:59 | 140 |
-| Afternoon | 14:00 - 17:59 | 140 |
-| Evening | 18:00 - 21:59 | 140 |
-
-**Season Buckets** (per time bucket):
-
-| Season | Months | Images per Time Bucket |
-|--------|--------|------------------------|
-| Winter | 12, 01, 02 | 35 |
-| Spring | 03, 04, 05 | 35 |
-| Summer | 06, 07, 08 | 35 |
-| Autumn | 09, 10, 11 | 35 |
-
-### Traffic Level Balance (Target Final Dataset)
-
-| Class | Images per Camera | Total Images |
-|-------|-------------------|--------------|
-| Empty | 125 | 4,000 |
-| Light | 125 | 4,000 |
-| Moderate | 125 | 4,000 |
-| Heavy | 125 | 4,000 |
-| **Total** | **500** | **16,000** |
-
-### Train/Val Split
-
-- **Training**: 12,800 images (80%)
-- **Validation**: 3,200 images (20%)
-- Stratified by traffic level and camera
-
-## 🏛️ Architecture
-
-### Base Pipeline Framework
-
-All phases inherit from `PipelinePhase`:
-
-```python
-from dataset_pipeline.base import PipelinePhase
-
-class CustomPhase(PipelinePhase):
-    def run(self, resume: bool = False):
-        """Execute phase logic"""
-        pass
-
-    def validate(self) -> bool:
-        """Validate phase output"""
-        pass
-```
-
-**Built-in features**:
-- Progress tracking with JSON persistence
-- Automatic logging to file and console
-- Error handling and timing
-- Resume capability
-- Validation after execution
-
-### Azure Client Wrapper
-
-```python
-from dataset_pipeline.azure_client import AzureBlobClient
-from dataset_pipeline.config import AzureConfig
-
-config = AzureConfig.from_env()
-client = AzureBlobClient(config)
-
-# List virtual directories
-prefixes = client.list_prefixes(prefix="GRADINA/", delimiter="/")
-
-# List blobs
-blobs = client.list_blobs(prefix="GRADINA/U/2024/07/15/")
-
-# Download with retry
-success = client.download_blob(
-    blob_name="GRADINA/U/2024/07/15/16-20-58.jpg",
-    local_path=Path("output/image.jpg"),
-    max_retries=3
-)
-```
-
-## 🐛 Issue Tracking
-
-This project uses **bd (beads)** for issue tracking:
-
-```bash
-# List ready (unblocked) issues
+# View ready work
 bd ready
 
-# Show issue details
-bd show <issue-id>
+# View all issues
+bd list --status open
 
 # Create new issue
-bd create "Issue title" -t bug|feature|task -p 0-4
-
-# Update issue status
-bd update <issue-id> --status in_progress
+bd create "Issue description" -t bug -p 1
 
 # Close issue
-bd close <issue-id> --reason "Done"
-
-# Sync with git
-bd sync
+bd close bd-123 --reason "Fixed"
 ```
 
-See `CLAUDE.md` for full bd workflow documentation.
+See [CLAUDE.md](CLAUDE.md) for complete bd workflow documentation.
 
-## 📈 Performance
+## 📄 License
 
-### Estimated Time (Full Pipeline)
-
-| Phase | Task | Estimated Time |
-|-------|------|----------------|
-| 1a | Structure discovery | 5-15 min |
-| 1b | Sample selection | 10-30 min |
-| 1c | Download 22,400 images | 1.5-3 hours |
-| 2 | YOLO analysis | ~75 min (MPS) |
-| 3 | Balanced selection | <1 min |
-| 4 | ROI definition (interactive) | ~2.5 hours |
-| 5 | Batch crop | 5-10 min |
-| 6 | Labeling verification (interactive) | 2-3 hours |
-| 7 | Train/val split | <1 min |
-| **Total** | | **~8-10 hours** |
-
-**Notes**:
-- Phases 1c, 4, and 6 require human presence
-- Other phases can run unattended
-- Times based on M2 MacBook Air with MPS
-
-### Hardware Acceleration
-
-- **MPS (Metal Performance Shaders)**: Apple Silicon GPU
-- **CUDA**: NVIDIA GPU
-- **CPU**: Fallback for compatibility
-
-Auto-detected by PyTorch in Phase 2.
+[Add your license here]
 
 ## 🤝 Contributing
 
-### Development Setup
+This is a course project. For questions or issues, please use the bd issue tracker:
 
 ```bash
-# Install development dependencies
-pip install pytest pytest-cov black flake8 mypy
-
-# Run linters
-black dataset_pipeline/
-flake8 dataset_pipeline/
-
-# Type checking
-mypy dataset_pipeline/
+bd create "Your question or issue" -t task -p 2
 ```
-
-### Adding a New Phase
-
-1. Create `dataset_pipeline/phaseN_name.py`
-2. Inherit from `PipelinePhase`
-3. Implement `run()` and `validate()` methods
-4. Add CLI entry point in `if __name__ == "__main__"`
-5. Export in `dataset_pipeline/__init__.py`
-6. Add tests in `tests/test_phaseN.py`
-
-Example:
-
-```python
-from .base import PipelinePhase
-from .config import PipelineConfig
-
-class NewPhase(PipelinePhase):
-    def __init__(self, pipeline_config: PipelineConfig):
-        super().__init__(
-            config=pipeline_config,
-            phase_name="new_phase",
-            description="Description of what this phase does"
-        )
-
-    def run(self, resume: bool = False):
-        # Implementation
-        return {"result": "data"}
-
-    def validate(self) -> bool:
-        # Validation logic
-        return True
-```
-
-## 📝 License
-
-[License information to be added]
-
-## 👥 Authors
-
-- Marko Mrdja - Initial implementation
-
-## 🔗 References
-
-- [YOLO11 Documentation](https://docs.ultralytics.com/)
-- [Azure Blob Storage SDK](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python)
-- [PyTorch MPS Backend](https://pytorch.org/docs/stable/notes/mps.html)
-
-## 📧 Contact
-
-For questions or issues, please open an issue in the GitHub repository.
-
----
-
-**Last Updated**: January 2, 2026
-**Project Status**: All 7 phases implemented (pipeline complete)

@@ -1,0 +1,15 @@
+{
+  "camera_id": "PRESEVO_I",
+  "archived_at": "2026-01-10T21:36:47.533473",
+  "raw_images": {
+    "count": 700,
+    "bytes": 23997255
+  },
+  "labeled_images": {
+    "traffic_present": 76,
+    "traffic_absent": 123,
+    "uncertain": 3
+  },
+  "total_labeled": 202,
+  "reason": "Excluded per user requirements - poor quality or positioning"
+}

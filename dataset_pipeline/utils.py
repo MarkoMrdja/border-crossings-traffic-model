@@ -424,3 +424,64 @@ def validate_image_path(file_path: Path | str, min_size_bytes: int = 1000) -> bo
         return False
 
     return True
+
+
+def is_image_corrupt(image_path: Path | str, gray_threshold: float = 0.90) -> bool:
+    """
+    Detect corrupt images with excessive gray pixels using histogram analysis.
+
+    Uses HSV saturation channel to identify grayscale images. Images with >90%
+    low-saturation pixels are considered corrupt/damaged.
+
+    Args:
+        image_path: Path to image file
+        gray_threshold: Fraction of pixels that must be gray (default: 0.90)
+
+    Returns:
+        True if image is corrupt (>90% gray pixels), False otherwise
+
+    Examples:
+        >>> is_image_corrupt("corrupt_gray.jpg")
+        True
+        >>> is_image_corrupt("normal_color.jpg")
+        False
+    """
+    try:
+        import cv2
+        import numpy as np
+
+        image_path = Path(image_path)
+
+        # Try to load image
+        img = cv2.imread(str(image_path))
+        if img is None:
+            logger.warning(f"Cannot read image: {image_path}")
+            return True  # Treat unreadable as corrupt
+
+        # Check dimensions
+        if img.shape[0] < 100 or img.shape[1] < 100:
+            logger.warning(f"Image too small: {image_path}")
+            return True
+
+        # Convert to HSV
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        saturation = hsv[:, :, 1]
+
+        # Count low-saturation (gray) pixels
+        # Saturation < 30 indicates grayscale/desaturated
+        gray_pixels = np.sum(saturation < 30)
+        total_pixels = saturation.size
+        gray_ratio = gray_pixels / total_pixels
+
+        if gray_ratio >= gray_threshold:
+            logger.warning(
+                f"Corrupt image detected: {image_path} "
+                f"({gray_ratio*100:.1f}% gray pixels)"
+            )
+            return True
+
+        return False
+
+    except Exception as e:
+        logger.warning(f"Error checking image corruption for {image_path}: {e}")
+        return False  # Assume valid if check fails (conservative)

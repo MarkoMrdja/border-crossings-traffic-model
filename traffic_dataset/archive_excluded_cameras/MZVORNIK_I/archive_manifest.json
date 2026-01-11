@@ -1,0 +1,15 @@
+{
+  "camera_id": "MZVORNIK_I",
+  "archived_at": "2026-01-10T21:36:48.102462",
+  "raw_images": {
+    "count": 700,
+    "bytes": 28277108
+  },
+  "labeled_images": {
+    "traffic_present": 10,
+    "traffic_absent": 112,
+    "uncertain": 0
+  },
+  "total_labeled": 122,
+  "reason": "Excluded per user requirements - poor quality or positioning"
+}

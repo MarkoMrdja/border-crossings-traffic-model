@@ -17,7 +17,7 @@ from collections import defaultdict
 
 from .base import PipelinePhase
 from .config import PipelineConfig, BINARY_LABELING_RULES
-from .utils import load_json, save_json
+from .utils import load_json, save_json, is_image_corrupt
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,7 @@ class SelectionPhase(PipelinePhase):
     def _group_by_binary_label(self, analyses: List[Dict]) -> Dict[str, List[Dict]]:
         """
         Group images by binary label based on YOLO vehicle count.
+        Filters out corrupt images during grouping.
 
         Args:
             analyses: List of YOLO analysis results
@@ -127,6 +128,8 @@ class SelectionPhase(PipelinePhase):
             'traffic_absent': []
         }
 
+        corrupt_count = 0
+
         for analysis in analyses:
             vehicle_count = analysis.get('vehicle_count', 0)
             camera_id = analysis.get('camera_id')
@@ -134,6 +137,13 @@ class SelectionPhase(PipelinePhase):
 
             if not local_path:
                 continue
+
+            # Check for corruption
+            image_path = self.config.base_dir / local_path
+            if is_image_corrupt(image_path):
+                corrupt_count += 1
+                self.logger.debug(f"Skipping corrupt image: {local_path}")
+                continue  # Skip corrupt images from selection
 
             # Assign binary label based on vehicle count
             if vehicle_count >= 7:
@@ -158,6 +168,8 @@ class SelectionPhase(PipelinePhase):
 
         self.logger.info(f"  traffic_present: {len(grouped['traffic_present'])} images")
         self.logger.info(f"  traffic_absent: {len(grouped['traffic_absent'])} images")
+        if corrupt_count > 0:
+            self.logger.warning(f"  Filtered {corrupt_count} corrupt images")
 
         return grouped
 

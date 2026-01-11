@@ -1,0 +1,15 @@
+{
+  "camera_id": "JABUKA_U",
+  "archived_at": "2026-01-10T21:36:48.921377",
+  "raw_images": {
+    "count": 700,
+    "bytes": 34403044
+  },
+  "labeled_images": {
+    "traffic_present": 10,
+    "traffic_absent": 109,
+    "uncertain": 0
+  },
+  "total_labeled": 119,
+  "reason": "Excluded per user requirements - poor quality or positioning"
+}

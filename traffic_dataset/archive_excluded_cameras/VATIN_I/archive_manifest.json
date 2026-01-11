@@ -1,0 +1,15 @@
+{
+  "camera_id": "VATIN_I",
+  "archived_at": "2026-01-10T21:36:46.469912",
+  "raw_images": {
+    "count": 700,
+    "bytes": 37156869
+  },
+  "labeled_images": {
+    "traffic_present": 100,
+    "traffic_absent": 100,
+    "uncertain": 0
+  },
+  "total_labeled": 200,
+  "reason": "Excluded per user requirements - poor quality or positioning"
+}

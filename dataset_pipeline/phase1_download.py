@@ -18,7 +18,8 @@ from .utils import (
     load_json,
     save_json,
     create_progress_tracker,
-    validate_image_path
+    validate_image_path,
+    is_image_corrupt
 )
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,17 @@ class ParallelDownloadPhase(PipelinePhase):
             )
 
             if success:
+                # Check for corruption
+                if is_image_corrupt(local_path):
+                    self.logger.warning(f"Corrupt image detected, deleting: {local_path}")
+                    local_path.unlink()  # Delete corrupt download
+                    return {
+                        "blob_name": blob_name,
+                        "local_path": str(local_path),
+                        "status": "failed",
+                        "reason": "corrupt_image"
+                    }
+
                 return {
                     "blob_name": blob_name,
                     "local_path": str(local_path),
@@ -311,11 +323,22 @@ def main():
         action="store_true",
         help="Only run validation"
     )
+    parser.add_argument(
+        "--manifest",
+        type=str,
+        default=None,
+        help="Path to manifest file (default: sample_manifest.json)"
+    )
 
     args = parser.parse_args()
 
     # Load configurations
     pipeline_config = PipelineConfig()
+
+    # Override manifest file if specified
+    if args.manifest:
+        pipeline_config.sample_manifest_file = args.manifest
+
     azure_config = AzureConfig.from_env()
 
     # Ensure directories exist

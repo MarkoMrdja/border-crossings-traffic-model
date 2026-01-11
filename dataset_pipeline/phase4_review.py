@@ -552,12 +552,32 @@ def main():
         # Determine review mode
         review_all = not args.borderline_only
 
-        # Execute phase
-        result = phase.execute(
-            validate_after=True,
-            review_all=review_all,
-            resume=args.resume
-        )
+        # Execute phase manually (can't use execute() because it doesn't pass review_all)
+        import time
+        start_time = time.time()
+
+        try:
+            result_data = phase.run(review_all=review_all, resume=args.resume)
+
+            # Validate
+            if phase.validate():
+                result = {
+                    'status': 'completed',
+                    'data': result_data,
+                    'duration_seconds': time.time() - start_time
+                }
+            else:
+                result = {
+                    'status': 'failed',
+                    'reason': 'validation_failed',
+                    'duration_seconds': time.time() - start_time
+                }
+        except Exception as e:
+            result = {
+                'status': 'failed',
+                'reason': str(e),
+                'duration_seconds': time.time() - start_time
+            }
 
         if result['status'] == 'completed':
             print(f"\n✓ Phase 4 completed successfully in {result['duration_seconds']:.1f} seconds")

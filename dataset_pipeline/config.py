@@ -127,7 +127,7 @@ YOLO_CONFIG = {
     "model": "yolo11n",
     "confidence_threshold": 0.25,
     "device": "mps",  # Apple Silicon GPU, fallback to 'cpu'
-    "classes": [2, 3, 5, 7],  # car, motorcycle, bus, truck in COCO dataset
+    "classes": [2, 3],  # car, motorcycle only (exclude bus, truck for accurate passenger vehicle traffic)
 }
 
 # Traffic Level Thresholds (vehicle counts)
@@ -319,12 +319,20 @@ LANE_DETECTION_CONFIG = {
 }
 
 
-# Excluded Cameras (Corrupted Data)
+# Excluded Cameras (Corrupted Data or Poor Positioning)
 # These cameras will be skipped during all pipeline phases
 EXCLUDED_CAMERAS = [
-    "VATIN_U",   # Corrupted data
-    "VATIN_I",   # Corrupted data
-    "GOSTUN_I",  # Corrupted data
+    "VATIN_U",       # Corrupted data
+    "VATIN_I",       # Corrupted data
+    "GOSTUN_I",      # Corrupted data
+    "TRBUSNICA_I",   # Poor positioning for visual analysis
+    "TRBUSNICA_U",   # Poor positioning for visual analysis
+    "PRESEVO_I",     # Poor positioning for visual analysis
+    "PRESEVO_U",     # Poor positioning for visual analysis
+    "MZVORNIK_I",    # Poor traffic_present ratio (23/216)
+    "MZVORNIK_U",    # Poor traffic_present ratio
+    "JABUKA_I",      # Poor traffic_present ratio (19/215)
+    "JABUKA_U",      # Poor traffic_present ratio
 ]
 
 
